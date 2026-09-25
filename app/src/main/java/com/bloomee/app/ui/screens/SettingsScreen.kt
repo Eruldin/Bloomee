@@ -306,6 +306,15 @@ fun SettingsScreen(
         item {
             BloomeeCard {
                 SectionTitle("Yedek dosyası")
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Dosya günlük, su ve beslenme kayıtlarının tamamını içerir — paylaştığın " +
+                        "kişi okuyabilir, güvenli sakla. Profil ayarların ve Gemini anahtarın " +
+                        "yedek dosyasına dahil edilmez; anahtar ayrıca Android'in otomatik " +
+                        "yedekleme ve cihaz aktarımından da dışlanır.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onExportBackup) { Text("Dışa aktar") }
