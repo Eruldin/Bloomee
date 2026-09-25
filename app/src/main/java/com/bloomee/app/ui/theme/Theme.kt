@@ -17,50 +17,50 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
-private val LightColors = lightColorScheme(
-    primary = Rose500,
+private fun lightScheme(palette: ThemePalette) = lightColorScheme(
+    primary = palette.primary.main,
     onPrimary = PureWhite,
-    primaryContainer = Rose100,
-    onPrimaryContainer = Rose700,
-    secondary = Plum500,
+    primaryContainer = palette.primary.soft,
+    onPrimaryContainer = palette.primary.deep,
+    secondary = palette.secondary.main,
     onSecondary = PureWhite,
-    secondaryContainer = Plum200,
-    onSecondaryContainer = Plum700,
-    tertiary = Aqua500,
+    secondaryContainer = palette.secondary.soft,
+    onSecondaryContainer = palette.secondary.deep,
+    tertiary = palette.tertiary.main,
     onTertiary = PureWhite,
-    tertiaryContainer = Aqua200,
-    onTertiaryContainer = Aqua700,
+    tertiaryContainer = palette.tertiary.soft,
+    onTertiaryContainer = palette.tertiary.deep,
     background = Sand100,
     onBackground = Ink900,
     surface = PureWhite,
     onSurface = Ink900,
     surfaceVariant = Rose50,
     onSurfaceVariant = Ink700,
-    outline = Rose200,
-    outlineVariant = Rose100
+    outline = palette.primary.light,
+    outlineVariant = palette.primary.soft
 )
 
-private val DarkColors = darkColorScheme(
-    primary = Rose400,
+private fun darkScheme(palette: ThemePalette) = darkColorScheme(
+    primary = palette.primary.light,
     onPrimary = Ink900,
-    primaryContainer = Rose700,
-    onPrimaryContainer = Rose100,
-    secondary = Plum200,
-    onSecondary = Plum700,
-    secondaryContainer = Plum700,
-    onSecondaryContainer = Plum200,
-    tertiary = Aqua200,
-    onTertiary = Aqua700,
-    tertiaryContainer = Aqua700,
-    onTertiaryContainer = Aqua200,
+    primaryContainer = palette.primary.deep,
+    onPrimaryContainer = palette.primary.soft,
+    secondary = palette.secondary.light,
+    onSecondary = palette.secondary.deep,
+    secondaryContainer = palette.secondary.deep,
+    onSecondaryContainer = palette.secondary.light,
+    tertiary = palette.tertiary.light,
+    onTertiary = palette.tertiary.deep,
+    tertiaryContainer = palette.tertiary.deep,
+    onTertiaryContainer = palette.tertiary.light,
     background = SurfaceDark,
     onBackground = Rose50,
     surface = SurfaceDarkElevated,
     onSurface = Rose50,
     surfaceVariant = SurfaceDarkElevated,
-    onSurfaceVariant = Rose200,
-    outline = Plum500,
-    outlineVariant = Plum700
+    onSurfaceVariant = palette.secondary.light,
+    outline = palette.secondary.main,
+    outlineVariant = palette.secondary.deep
 )
 
 private val BloomeeTypography = Typography(
@@ -85,10 +85,12 @@ private val BloomeeShapes = Shapes(
 
 @Composable
 fun BloomeeTheme(
+    paletteName: String = ThemePalette.DEFAULT.key,
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColors else LightColors
+    val palette = ThemePalette.fromKey(paletteName)
+    val colorScheme = if (darkTheme) darkScheme(palette) else lightScheme(palette)
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

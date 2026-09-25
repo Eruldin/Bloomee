@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure Android SDK packages
+        run: |
+          SDKMANAGER="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest
+
+      # Signing is optional: when the KEYSTORE_BASE64 + password repo secrets
+      # are set, release artifacts are properly signed; without them the APK
+      # falls back to the debug build (still installable) and the AAB is
+      # unsigned.
+      - name: Build release artifacts
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > bloomee-release.jks
+            printf 'storeFile=bloomee-release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+            ./gradlew assembleRelease bundleRelease
+            cp app/build/outputs/apk/release/app-release.apk "bloomee-${TAG}.apk"
+          else
+            ./gradlew assembleDebug bundleRelease
+            cp app/build/outputs/apk/debug/app-debug.apk "bloomee-${TAG}.apk"
+          fi
+          cp app/build/outputs/bundle/release/app-release.aab "bloomee-${TAG}.aab"
+
+      # Creates the release only when absent — an existing release (e.g. one
+      # whose assets were uploaded manually) is left untouched.
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists — leaving assets unchanged"
+          else
+            gh release create "$TAG" "bloomee-${TAG}.apk" "bloomee-${TAG}.aab" \
+              --title "Bloomee ${TAG}" --generate-notes
+          fi

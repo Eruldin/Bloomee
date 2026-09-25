@@ -18,6 +18,17 @@ val Aqua200 = Color(0xFFBCE6F2)
 val Aqua500 = Color(0xFF3AA6C4)
 val Aqua700 = Color(0xFF1C6C85)
 
+// Extra families for user-selectable theme palettes.
+val Forest200 = Color(0xFFBFE3D0)
+val Forest400 = Color(0xFF7CC29D)
+val Forest500 = Color(0xFF4E9A72)
+val Forest700 = Color(0xFF2E6B4C)
+
+val Sunset200 = Color(0xFFFCD7C5)
+val Sunset400 = Color(0xFFEE9B72)
+val Sunset500 = Color(0xFFD97B57)
+val Sunset700 = Color(0xFF9C4A2D)
+
 val PureWhite = Color(0xFFFFFFFF)
 val Sand100 = Color(0xFFFDF6F0)
 val Ink900 = Color(0xFF211B22)

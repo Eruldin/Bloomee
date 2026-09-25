@@ -159,5 +159,6 @@ data class UserProfile(
     val medicationReminderHour: Int = 21,
     val cloudSyncEnabled: Boolean = false,
     val assistantApiKey: String = "",
+    val themeName: String = "rose",
     val onboardingCompleted: Boolean = false
 )

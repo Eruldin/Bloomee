@@ -15,6 +15,7 @@ Regl, su ve genel kadın sağlığı takibi için Android uygulaması (Kotlin + 
 - **Yedekleme** — JSON dışa/içe aktarma; paylaşım Android paylaş menüsüyle.
 - **Asistan** — isteğe bağlı Gemini sohbeti; anahtar APK'ya gömülmez, kullanıcı Ayarlar'dan girer. Döngü, su ve kalori bağlamını görür.
 - **Randevu** — İçgörüler ekranındaki tuş MHRS'yi tarayıcıda açar.
+- **Tema** — Ayarlar'dan 5 renk paleti (Gül, Lavanta, Okyanus, Orman, Gün batımı); açık/koyu mod sistemi izler.
 
 Uygulama offline-first çalışır: tüm veri Room ve DataStore ile cihazda tutulur, bulut senkronu isteğe bağlıdır.
 
@@ -35,6 +36,8 @@ Uygulama offline-first çalışır: tüm veri Room ve DataStore ile cihazda tutu
 
 `.github/workflows/android-ci.yml` her PR'da ve `main`'e push'ta GitHub üzerinde `lintDebug`, `testDebugUnitTest`, `assembleDebug` ve `bundleRelease` koşturur.
 
+`v*` etiketi push'lanınca `.github/workflows/release.yml` testleri koşturur, APK + AAB üretir ve bunları GitHub Release'e ekler (indirilebilir APK). İmzalı çıktı için repo secret'larına `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` ekle; yoksa imzasız üretilir.
+
 ## Yayınlama (Play Store)
 
 1. Bir seferlik yayın anahtarı oluştur (yedekle ve güvende tut — tüm gelecek güncellemeler aynı anahtarı ister):
@@ -49,6 +52,8 @@ Uygulama offline-first çalışır: tüm veri Room ve DataStore ile cihazda tutu
 4. `versionCode`/`versionName`'i `app/build.gradle.kts` içinde her yayında güncelle ve `.aab` dosyasını Play Console'a yükle. `store-assets/bloomee-icon-512.png` mağaza görseli olarak hazır.
 
 `keystore.properties` yoksa release derleme imzasız üretilir; yalnızca doğrulama amaçlıdır, Play'e yüklenemez.
+
+Yeni sürüm yayınlamak için: `git tag v1.0.1 && git push origin v1.0.1` — release workflow'u APK/AAB'yi otomatik oluşturup GitHub Release'e ekler.
 
 ## Sağlık uyarısı
 

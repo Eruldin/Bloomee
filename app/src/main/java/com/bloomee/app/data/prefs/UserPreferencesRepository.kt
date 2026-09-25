@@ -35,6 +35,7 @@ class UserPreferencesRepository(private val context: Context) {
         val medicationHour = intPreferencesKey("medication_hour")
         val cloudSync = booleanPreferencesKey("cloud_sync")
         val assistantApiKey = stringPreferencesKey("assistant_api_key")
+        val themeName = stringPreferencesKey("theme_name")
         val onboardingCompleted = booleanPreferencesKey("onboarding_completed")
     }
 
@@ -58,6 +59,7 @@ class UserPreferencesRepository(private val context: Context) {
             medicationReminderHour = prefs[Keys.medicationHour] ?: 21,
             cloudSyncEnabled = prefs[Keys.cloudSync] ?: false,
             assistantApiKey = prefs[Keys.assistantApiKey].orEmpty(),
+            themeName = prefs[Keys.themeName] ?: "rose",
             onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false
         )
     }
@@ -83,6 +85,7 @@ class UserPreferencesRepository(private val context: Context) {
                 medicationReminderHour = prefs[Keys.medicationHour] ?: 21,
                 cloudSyncEnabled = prefs[Keys.cloudSync] ?: false,
                 assistantApiKey = prefs[Keys.assistantApiKey].orEmpty(),
+                themeName = prefs[Keys.themeName] ?: "rose",
                 onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false
             )
             val updated = transform(current)
@@ -103,6 +106,7 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.medicationHour] = updated.medicationReminderHour
             prefs[Keys.cloudSync] = updated.cloudSyncEnabled
             prefs[Keys.assistantApiKey] = updated.assistantApiKey
+            prefs[Keys.themeName] = updated.themeName
             prefs[Keys.onboardingCompleted] = updated.onboardingCompleted
         }
     }
