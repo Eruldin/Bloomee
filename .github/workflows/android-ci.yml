@@ -17,11 +17,16 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      # The ubuntu runner already ships an Android SDK in $ANDROID_HOME; only
+      # make sure the platform/build-tools the project needs are installed.
+      - name: Ensure Android SDK packages
+        run: |
+          SDKMANAGER="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Lint
         run: ./gradlew lintDebug
