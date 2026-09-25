@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -10,6 +12,16 @@ plugins {
 val firebaseConfig = file("google-services.json")
 if (firebaseConfig.exists()) {
     apply(plugin = libs.plugins.google.services.get().pluginId)
+}
+
+// Release signing is opt-in: drop a gitignored keystore.properties at the repo
+// root (see keystore.properties.example) and the release build is signed for
+// Play upload; without it, release artifacts are built unsigned.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -26,10 +38,24 @@ android {
         buildConfigField("boolean", "CLOUD_SYNC_CONFIGURED", firebaseConfig.exists().toString())
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

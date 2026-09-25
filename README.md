@@ -31,6 +31,25 @@ Uygulama offline-first çalışır: tüm veri Room ve DataStore ile cihazda tutu
 
 `app/google-services.json` yoksa Google Services eklentisi uygulanmaz ve bulut senkronu `UNCONFIGURED` durumunda kalır; uygulama tümüyle çevrimdışı çalışmaya devam eder. Dosya eklenince senkron Ayarlar'dan açılabilir: anonim Firebase kimliğiyle `users/{uid}/dailyLogs`, `users/{uid}/hydration` ve `users/{uid}/nutrition` altında `updatedAt` karşılaştırmalı son-yazan-kazanır birleştirme yapılır.
 
+## CI
+
+`.github/workflows/android-ci.yml` her PR'da ve `main`'e push'ta GitHub üzerinde `lintDebug`, `testDebugUnitTest`, `assembleDebug` ve `bundleRelease` koşturur.
+
+## Yayınlama (Play Store)
+
+1. Bir seferlik yayın anahtarı oluştur (yedekle ve güvende tut — tüm gelecek güncellemeler aynı anahtarı ister):
+   ```bash
+   keytool -genkeypair -v -keystore bloomee-release.jks -alias bloomee -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. `keystore.properties.example` dosyasını `keystore.properties` olarak kopyalayıp şifreleri doldur (dosya ve `.jks` gitignore'ludur, repoya girmez).
+3. İmzalı paket üret:
+   ```bash
+   ./gradlew bundleRelease   # app/build/outputs/bundle/release/app-release.aab
+   ```
+4. `versionCode`/`versionName`'i `app/build.gradle.kts` içinde her yayında güncelle ve `.aab` dosyasını Play Console'a yükle. `store-assets/bloomee-icon-512.png` mağaza görseli olarak hazır.
+
+`keystore.properties` yoksa release derleme imzasız üretilir; yalnızca doğrulama amaçlıdır, Play'e yüklenemez.
+
 ## Sağlık uyarısı
 
 Uygulamadaki tahminler ve öneriler genel bilgilendirme amaçlıdır, tıbbi tavsiye veya teşhis yerine geçmez.
