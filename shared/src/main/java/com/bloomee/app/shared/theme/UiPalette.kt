@@ -31,6 +31,7 @@ object BloomeeColors {
 
     const val PURE_WHITE = 0xFFFFFFFFL
     const val SAND_100 = 0xFFFDF6F0L
+    const val INK_50 = 0xFFF5F2F4L
     const val INK_900 = 0xFF211B22L
     const val INK_700 = 0xFF4A424CL
     const val INK_500 = 0xFF7A727CL
@@ -59,18 +60,39 @@ private val AquaShades = ShadeValues(0xFFBCE6F2, 0xFFBCE6F2, 0xFF3AA6C4, 0xFF1C6
 private val ForestShades = ShadeValues(0xFFBFE3D0, 0xFF7CC29D, 0xFF4E9A72, 0xFF2E6B4C)
 private val SunsetShades = ShadeValues(0xFFFCD7C5, 0xFFEE9B72, 0xFFD97B57, 0xFF9C4A2D)
 
+/**
+ * Per-palette surface colors so each theme has its own tinted canvas instead of
+ * one shared white scheme. Light tones are very light washes of the family color;
+ * dark tones are darks with a subtle hue cast of the same family.
+ */
+data class SurfaceTones(
+    val background: Long,
+    val surface: Long,
+    val surfaceVariant: Long,
+    val backgroundDark: Long,
+    val surfaceDark: Long,
+    val surfaceVariantDark: Long
+)
+
+private val RoseSurfaces = SurfaceTones(0xFFFAEBEF, 0xFFFFF9FA, 0xFFF5DDE2, 0xFF1E1418, 0xFF281C22, 0xFF382733)
+private val PlumSurfaces = SurfaceTones(0xFFF1EAF7, 0xFFFAF7FD, 0xFFE8DCF3, 0xFF1A1424, 0xFF241E31, 0xFF322A45)
+private val AquaSurfaces = SurfaceTones(0xFFEAF5F8, 0xFFF7FBFD, 0xFFDAEEF3, 0xFF121C21, 0xFF1A2830, 0xFF243844)
+private val ForestSurfaces = SurfaceTones(0xFFECF5EF, 0xFFF7FBF9, 0xFFDFEFE5, 0xFF131B16, 0xFF1B271F, 0xFF26372C)
+private val SunsetSurfaces = SurfaceTones(0xFFF9F0EA, 0xFFFCF9F5, 0xFFF4E4D9, 0xFF1E1611, 0xFF292019, 0xFF3A2D22)
+
 enum class UiPalette(
     val key: String,
     val label: String,
     val primary: ShadeValues,
     val secondary: ShadeValues,
-    val tertiary: ShadeValues
+    val tertiary: ShadeValues,
+    val surfaces: SurfaceTones
 ) {
-    ROSE("rose", "Gül", RoseShades, RoseShades, RoseShades),
-    LAVENDER("lavender", "Lavanta", PlumShades, PlumShades, PlumShades),
-    OCEAN("ocean", "Okyanus", AquaShades, AquaShades, AquaShades),
-    FOREST("forest", "Orman", ForestShades, ForestShades, ForestShades),
-    SUNSET("sunset", "Gün batımı", SunsetShades, SunsetShades, SunsetShades);
+    ROSE("rose", "Gül", RoseShades, RoseShades, RoseShades, RoseSurfaces),
+    LAVENDER("lavender", "Lavanta", PlumShades, PlumShades, PlumShades, PlumSurfaces),
+    OCEAN("ocean", "Okyanus", AquaShades, AquaShades, AquaShades, AquaSurfaces),
+    FOREST("forest", "Orman", ForestShades, ForestShades, ForestShades, ForestSurfaces),
+    SUNSET("sunset", "Gün batımı", SunsetShades, SunsetShades, SunsetShades, SunsetSurfaces);
 
     companion object {
         val DEFAULT = ROSE

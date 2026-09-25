@@ -84,6 +84,20 @@ fun BloomeeApp(viewModel: BloomeeViewModel) {
 
     if (!state.loading && !state.profile.onboardingCompleted) {
         OnboardingScreen(
+            themeKey = state.profile.themeName,
+            onSelectTheme = { key ->
+                viewModel.updateProfile { it.copy(themeName = key) }
+            },
+            remindersEnabled = state.profile.reminderHydrationEnabled ||
+                state.profile.reminderPeriodEnabled,
+            onRemindersChange = { enabled ->
+                viewModel.updateProfile {
+                    it.copy(
+                        reminderHydrationEnabled = enabled,
+                        reminderPeriodEnabled = enabled
+                    )
+                }
+            },
             onFinish = { transform, lastPeriodStart, periodLength ->
                 viewModel.updateProfile(transform)
                 lastPeriodStart?.let { start ->
