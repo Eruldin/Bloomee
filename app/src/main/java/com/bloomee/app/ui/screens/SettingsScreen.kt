@@ -280,7 +280,7 @@ fun SettingsScreen(
                 val syncLabel = when (state.syncState) {
                     SyncState.UNCONFIGURED -> "Firebase yapılandırması (google-services.json) eklenmedi."
                     SyncState.DISABLED -> "Kapalı. Verin yalnızca bu cihazda."
-                    SyncState.IDLE -> "Açık. Kayıtların hesabına şifreli bağlantıyla yedekleniyor."
+                    SyncState.IDLE -> "Açık. Kayıtların bu cihazın anonim bulut hesabına yedekleniyor; yeni telefona geçişte dosya yedeğini kullan."
                     SyncState.SYNCING -> "Eşitleniyor..."
                     SyncState.ERROR -> "Son eşitleme başarısız oldu."
                 }

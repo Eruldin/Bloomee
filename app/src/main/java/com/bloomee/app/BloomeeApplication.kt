@@ -11,6 +11,7 @@ import com.bloomee.app.data.repository.HydrationRepository
 import com.bloomee.app.data.repository.NutritionRepository
 import com.bloomee.app.data.sync.CloudSync
 import com.bloomee.app.data.sync.FirebaseCloudSync
+import com.bloomee.app.data.sync.TombstoneStore
 import com.bloomee.app.notification.Notifications
 import com.bloomee.app.notification.ReminderScheduler
 import kotlinx.coroutines.CoroutineScope
@@ -22,7 +23,7 @@ import kotlinx.coroutines.launch
 class AppContainer(context: Context) {
     private val database = BloomeeDatabase.get(context)
 
-    val cloudSync: CloudSync = FirebaseCloudSync(context)
+    val cloudSync: CloudSync = FirebaseCloudSync(context, TombstoneStore(context))
     val userPreferencesRepository = UserPreferencesRepository(context)
     val cycleRepository = CycleRepository(database.dailyLogDao(), cloudSync)
     val hydrationRepository = HydrationRepository(database.hydrationDao(), cloudSync)

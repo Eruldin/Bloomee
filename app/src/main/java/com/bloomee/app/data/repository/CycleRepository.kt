@@ -35,6 +35,11 @@ class CycleRepository(
         cloudSync.deleteDailyLog(date.toString())
     }
 
+    /** Removes entries locally only — used by sync to apply remote tombstones. */
+    suspend fun removeLocal(dates: List<String>) {
+        dates.forEach { dao.delete(it) }
+    }
+
     suspend fun markPeriodRange(start: LocalDate, endInclusive: LocalDate, flowLevelName: String) {
         var cursor = start
         while (!cursor.isAfter(endInclusive)) {

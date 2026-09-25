@@ -27,6 +27,11 @@ class NutritionRepository(
         cloudSync.deleteNutritionEntry(id)
     }
 
+    /** Removes entries locally only — used by sync to apply remote tombstones. */
+    suspend fun removeLocal(ids: List<String>) {
+        ids.forEach { dao.delete(it) }
+    }
+
     suspend fun exportAll(): List<NutritionEntryEntity> = dao.getAll()
 
     suspend fun importAll(entities: List<NutritionEntryEntity>, replace: Boolean) {
