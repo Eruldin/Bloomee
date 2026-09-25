@@ -1,6 +1,7 @@
 package com.bloomee.app.domain.model
 
 import java.time.LocalDate
+import java.util.UUID
 
 enum class FlowLevel(val label: String, val weight: Int) {
     NONE("Yok", 0),
@@ -64,10 +65,10 @@ enum class FertilityLevel(val label: String) {
     PEAK("En yüksek")
 }
 
-enum class ActivityLevel(val label: String, val hydrationFactor: Double) {
-    LOW("Hareketsiz", 1.0),
-    MODERATE("Orta", 1.12),
-    HIGH("Aktif", 1.25)
+enum class ActivityLevel(val label: String, val hydrationFactor: Double, val calorieFactor: Double) {
+    LOW("Hareketsiz", 1.0, 1.2),
+    MODERATE("Orta", 1.12, 1.4),
+    HIGH("Aktif", 1.25, 1.6)
 }
 
 data class DailyLog(
@@ -111,10 +112,41 @@ data class HydrationDay(
         get() = if (goalMl <= 0) 0f else (consumedMl.toFloat() / goalMl).coerceIn(0f, 1f)
 }
 
+enum class Meal(val label: String) {
+    BREAKFAST("Kahvaltı"),
+    LUNCH("Öğle"),
+    DINNER("Akşam"),
+    SNACK("Atıştırma");
+
+    companion object {
+        fun fromName(value: String?): Meal = entries.firstOrNull { it.name == value } ?: SNACK
+    }
+}
+
+data class NutritionEntry(
+    val id: String = UUID.randomUUID().toString(),
+    val date: LocalDate,
+    val meal: Meal = Meal.SNACK,
+    val name: String,
+    val kcal: Int
+)
+
+data class NutritionDay(
+    val date: LocalDate,
+    val entries: List<NutritionEntry>,
+    val goalKcal: Int
+) {
+    val consumedKcal: Int get() = entries.sumOf { it.kcal }
+
+    val progress: Float
+        get() = if (goalKcal <= 0) 0f else (consumedKcal.toFloat() / goalKcal).coerceIn(0f, 1f)
+}
+
 data class UserProfile(
     val displayName: String = "",
     val birthYear: Int? = null,
     val weightKg: Double? = null,
+    val heightCm: Int? = null,
     val activityLevel: ActivityLevel = ActivityLevel.MODERATE,
     val defaultCycleLength: Int = 28,
     val defaultPeriodLength: Int = 5,

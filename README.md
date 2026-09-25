@@ -8,11 +8,13 @@ Regl, su ve genel kadın sağlığı takibi için Android uygulaması (Kotlin + 
 - **Tahmin** — luteal faz sabitli tahmin motoru; düzensiz döngüleri ve gecikmeyi ayrıca işaretler, yeterli veri yoksa bunu açıkça söyler.
 - **Takvim** — kaydedilen regl günleri, tahmini günler ve doğurgan pencere aynı görünümde.
 - **Su takibi** — kiloya, hareket düzeyine ve döngü fazına göre kişisel hedef, hızlı ekleme ve 7 günlük grafik.
+- **Kalori takibi** — Mifflin-St Jeor denklemiyle (kilo, boy, yaş, hareket) tahmin edilen günlük hedef, öğün bazlı kayıt ve 7 günlük grafik.
 - **İçgörüler** — ortalama döngü uzunluğu, değişkenlik, döngü grafiği, en sık semptomlar.
 - **Hatırlatıcılar** — WorkManager ile su, regl ve ilaç bildirimleri.
 - **Partner modu** — isteğe bağlı, sadece kullanıcı açtığında görünen özet.
 - **Yedekleme** — JSON dışa/içe aktarma; paylaşım Android paylaş menüsüyle.
-- **Asistan** — isteğe bağlı Gemini sohbeti; anahtar APK'ya gömülmez, kullanıcı Ayarlar'dan girer.
+- **Asistan** — isteğe bağlı Gemini sohbeti; anahtar APK'ya gömülmez, kullanıcı Ayarlar'dan girer. Döngü, su ve kalori bağlamını görür.
+- **Randevu** — İçgörüler ekranındaki tuş MHRS'yi tarayıcıda açar.
 
 Uygulama offline-first çalışır: tüm veri Room ve DataStore ile cihazda tutulur, bulut senkronu isteğe bağlıdır.
 
@@ -27,7 +29,7 @@ Uygulama offline-first çalışır: tüm veri Room ve DataStore ile cihazda tutu
 
 ## Firebase (isteğe bağlı bulut senkronu)
 
-`app/google-services.json` yoksa Google Services eklentisi uygulanmaz ve bulut senkronu `UNCONFIGURED` durumunda kalır; uygulama tümüyle çevrimdışı çalışmaya devam eder. Dosya eklenince senkron Ayarlar'dan açılabilir: anonim Firebase kimliğiyle `users/{uid}/dailyLogs` ve `users/{uid}/hydration` altında `updatedAt` karşılaştırmalı son-yazan-kazanır birleştirme yapılır.
+`app/google-services.json` yoksa Google Services eklentisi uygulanmaz ve bulut senkronu `UNCONFIGURED` durumunda kalır; uygulama tümüyle çevrimdışı çalışmaya devam eder. Dosya eklenince senkron Ayarlar'dan açılabilir: anonim Firebase kimliğiyle `users/{uid}/dailyLogs`, `users/{uid}/hydration` ve `users/{uid}/nutrition` altında `updatedAt` karşılaştırmalı son-yazan-kazanır birleştirme yapılır.
 
 ## Sağlık uyarısı
 

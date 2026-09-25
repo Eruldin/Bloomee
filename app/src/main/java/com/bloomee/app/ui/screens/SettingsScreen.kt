@@ -45,6 +45,8 @@ fun SettingsScreen(
     val profile = state.profile
     var name by remember(profile.displayName) { mutableStateOf(profile.displayName) }
     var weight by remember(profile.weightKg) { mutableStateOf(profile.weightKg?.toString().orEmpty()) }
+    var height by remember(profile.heightCm) { mutableStateOf(profile.heightCm?.toString().orEmpty()) }
+    var birthYear by remember(profile.birthYear) { mutableStateOf(profile.birthYear?.toString().orEmpty()) }
     var apiKey by remember(profile.assistantApiKey) { mutableStateOf(profile.assistantApiKey) }
     var partnerName by remember(profile.partnerName) { mutableStateOf(profile.partnerName) }
 
@@ -76,10 +78,42 @@ fun SettingsScreen(
                             onUpdateProfile { current -> current.copy(weightKg = parsed) }
                         }
                     },
-                    label = { Text("Kilo (kg) — su hedefi için") },
+                    label = { Text("Kilo (kg) — su ve kalori hedefi için") },
                     singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = KeyboardType.Decimal
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = height,
+                    onValueChange = { value ->
+                        height = value.filter { it.isDigit() }.take(3)
+                        height.toIntOrNull()?.let { parsed ->
+                            onUpdateProfile { current -> current.copy(heightCm = parsed) }
+                        }
+                    },
+                    label = { Text("Boy (cm) — kalori hedefi için") },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = birthYear,
+                    onValueChange = { value ->
+                        birthYear = value.filter { it.isDigit() }.take(4)
+                        birthYear.toIntOrNull()?.let { parsed ->
+                            onUpdateProfile { current -> current.copy(birthYear = parsed) }
+                        }
+                    },
+                    label = { Text("Doğum yılı — kalori hedefi için") },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = KeyboardType.Number
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )

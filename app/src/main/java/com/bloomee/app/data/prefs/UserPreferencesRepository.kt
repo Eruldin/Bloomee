@@ -22,6 +22,7 @@ class UserPreferencesRepository(private val context: Context) {
         val displayName = stringPreferencesKey("display_name")
         val birthYear = intPreferencesKey("birth_year")
         val weightKg = doublePreferencesKey("weight_kg")
+        val heightCm = intPreferencesKey("height_cm")
         val activityLevel = stringPreferencesKey("activity_level")
         val cycleLength = intPreferencesKey("cycle_length")
         val periodLength = intPreferencesKey("period_length")
@@ -42,6 +43,7 @@ class UserPreferencesRepository(private val context: Context) {
             displayName = prefs[Keys.displayName].orEmpty(),
             birthYear = prefs[Keys.birthYear],
             weightKg = prefs[Keys.weightKg],
+            heightCm = prefs[Keys.heightCm],
             activityLevel = prefs[Keys.activityLevel]
                 ?.let { name -> ActivityLevel.entries.firstOrNull { it.name == name } }
                 ?: ActivityLevel.MODERATE,
@@ -66,6 +68,7 @@ class UserPreferencesRepository(private val context: Context) {
                 displayName = prefs[Keys.displayName].orEmpty(),
                 birthYear = prefs[Keys.birthYear],
                 weightKg = prefs[Keys.weightKg],
+                heightCm = prefs[Keys.heightCm],
                 activityLevel = prefs[Keys.activityLevel]
                     ?.let { name -> ActivityLevel.entries.firstOrNull { it.name == name } }
                     ?: ActivityLevel.MODERATE,
@@ -87,6 +90,7 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.displayName] = updated.displayName
             updated.birthYear?.let { prefs[Keys.birthYear] = it }
             updated.weightKg?.let { prefs[Keys.weightKg] = it }
+            updated.heightCm?.let { prefs[Keys.heightCm] = it }
             prefs[Keys.activityLevel] = updated.activityLevel.name
             prefs[Keys.cycleLength] = updated.defaultCycleLength
             prefs[Keys.periodLength] = updated.defaultPeriodLength

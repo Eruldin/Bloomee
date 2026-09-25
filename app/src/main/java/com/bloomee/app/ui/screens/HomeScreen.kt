@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -54,6 +55,7 @@ fun HomeScreen(
     onLogToday: () -> Unit,
     onAddWater: (Int) -> Unit,
     onOpenAssistant: () -> Unit,
+    onOpenNutrition: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -63,6 +65,7 @@ fun HomeScreen(
     ) {
         item { CycleHeroCard(state, onLogToday) }
         item { HydrationQuickCard(state, onAddWater) }
+        item { NutritionQuickCard(state, onOpenNutrition) }
 
         if (state.profile.partnerModeEnabled) {
             item {
@@ -237,6 +240,42 @@ private fun HydrationQuickCard(state: BloomeeUiState, onAddWater: (Int) -> Unit)
                 FilledTonalButton(onClick = { onAddWater(amount) }) { Text("+$amount ml") }
             }
         }
+    }
+}
+
+@Composable
+private fun NutritionQuickCard(state: BloomeeUiState, onOpenNutrition: () -> Unit) {
+    val nutrition = state.nutritionToday
+    BloomeeCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.Restaurant,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary
+            )
+            Spacer(Modifier.size(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Kalori takibi", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "${nutrition.consumedKcal} / ${nutrition.goalKcal} kcal · ${nutrition.entries.size} öğün",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text("%${(nutrition.progress * 100).toInt()}", style = MaterialTheme.typography.titleMedium)
+        }
+        Spacer(Modifier.height(10.dp))
+        LinearProgressIndicator(
+            progress = { nutrition.progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(RoundedCornerShape(6.dp)),
+            color = MaterialTheme.colorScheme.secondary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        FilledTonalButton(onClick = onOpenNutrition) { Text("Öğün ekle") }
     }
 }
 

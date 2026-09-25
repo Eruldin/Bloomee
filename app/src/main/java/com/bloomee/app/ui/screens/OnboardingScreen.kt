@@ -39,6 +39,8 @@ fun OnboardingScreen(
 ) {
     var name by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
+    var height by remember { mutableStateOf("") }
+    var birthYear by remember { mutableStateOf("") }
     var activity by remember { mutableStateOf(ActivityLevel.MODERATE) }
     var cycleLength by remember { mutableStateOf(28) }
     var periodLength by remember { mutableStateOf(5) }
@@ -76,6 +78,28 @@ fun OnboardingScreen(
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     keyboardType = KeyboardType.Decimal
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = height,
+                onValueChange = { value -> height = value.filter { it.isDigit() }.take(3) },
+                label = { Text("Boy (cm) — isteğe bağlı") },
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = KeyboardType.Number
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = birthYear,
+                onValueChange = { value -> birthYear = value.filter { it.isDigit() }.take(4) },
+                label = { Text("Doğum yılı — isteğe bağlı") },
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = KeyboardType.Number
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -143,6 +167,8 @@ fun OnboardingScreen(
                         current.copy(
                             displayName = name.trim(),
                             weightKg = weight.toDoubleOrNull(),
+                            heightCm = height.toIntOrNull(),
+                            birthYear = birthYear.toIntOrNull(),
                             activityLevel = activity,
                             defaultCycleLength = cycleLength,
                             defaultPeriodLength = periodLength,

@@ -5,8 +5,10 @@ import android.util.Log
 import com.bloomee.app.BuildConfig
 import com.bloomee.app.data.local.DailyLogEntity
 import com.bloomee.app.data.local.HydrationDayEntity
+import com.bloomee.app.data.local.NutritionEntryEntity
 import com.bloomee.app.data.repository.CycleRepository
 import com.bloomee.app.data.repository.HydrationRepository
+import com.bloomee.app.data.repository.NutritionRepository
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -22,8 +24,14 @@ interface CloudSync {
     suspend fun setEnabled(enabled: Boolean)
     suspend fun pushDailyLog(entity: DailyLogEntity)
     suspend fun pushHydrationDay(entity: HydrationDayEntity)
+    suspend fun pushNutritionEntry(entity: NutritionEntryEntity)
     suspend fun deleteDailyLog(date: String)
-    suspend fun syncNow(cycleRepository: CycleRepository, hydrationRepository: HydrationRepository)
+    suspend fun deleteNutritionEntry(id: String)
+    suspend fun syncNow(
+        cycleRepository: CycleRepository,
+        hydrationRepository: HydrationRepository,
+        nutritionRepository: NutritionRepository
+    )
 }
 
 /**
@@ -90,15 +98,38 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
         }.onFailure { report(it) }
     }
 
+    override suspend fun pushNutritionEntry(entity: NutritionEntryEntity) {
+        if (!enabled) return
+        runCatching {
+            collection("nutrition")?.document(entity.id)?.set(
+                mapOf(
+                    "id" to entity.id,
+                    "date" to entity.date,
+                    "meal" to entity.meal,
+                    "name" to entity.name,
+                    "kcal" to entity.kcal,
+                    "updatedAt" to entity.updatedAt
+                )
+            )?.await()
+        }.onFailure { report(it) }
+    }
+
     override suspend fun deleteDailyLog(date: String) {
         if (!enabled) return
         runCatching { collection("dailyLogs")?.document(date)?.delete()?.await() }
             .onFailure { report(it) }
     }
 
+    override suspend fun deleteNutritionEntry(id: String) {
+        if (!enabled) return
+        runCatching { collection("nutrition")?.document(id)?.delete()?.await() }
+            .onFailure { report(it) }
+    }
+
     override suspend fun syncNow(
         cycleRepository: CycleRepository,
-        hydrationRepository: HydrationRepository
+        hydrationRepository: HydrationRepository,
+        nutritionRepository: NutritionRepository
     ) {
         if (!enabled) return
         _state.value = SyncState.SYNCING
@@ -142,6 +173,25 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
             hydrationRepository.importAll(mergedHydration, replace = false)
             mergedHydration.filter { localHydration[it.date]?.updatedAt != it.updatedAt }
                 .forEach { pushHydrationDay(it) }
+
+            val remoteNutrition = collection("nutrition")?.get()?.await()?.documents.orEmpty().mapNotNull { doc ->
+                val id = doc.getString("id") ?: doc.id
+                NutritionEntryEntity(
+                    id = id,
+                    date = doc.getString("date") ?: return@mapNotNull null,
+                    meal = doc.getString("meal") ?: "SNACK",
+                    name = doc.getString("name").orEmpty(),
+                    kcal = doc.getLong("kcal")?.toInt() ?: 0,
+                    updatedAt = doc.getLong("updatedAt") ?: 0L
+                )
+            }
+            val localNutrition = nutritionRepository.exportAll().associateBy { it.id }
+            val mergedNutrition = (remoteNutrition + localNutrition.values)
+                .groupBy { it.id }
+                .map { (_, versions) -> versions.maxBy { it.updatedAt } }
+            nutritionRepository.importAll(mergedNutrition, replace = false)
+            mergedNutrition.filter { localNutrition[it.id]?.updatedAt != it.updatedAt }
+                .forEach { pushNutritionEntry(it) }
 
             _state.value = SyncState.IDLE
         }.onFailure {

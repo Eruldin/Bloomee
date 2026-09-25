@@ -5,7 +5,9 @@ import androidx.room.PrimaryKey
 import com.bloomee.app.domain.model.DailyLog
 import com.bloomee.app.domain.model.FlowLevel
 import com.bloomee.app.domain.model.HydrationDay
+import com.bloomee.app.domain.model.Meal
 import com.bloomee.app.domain.model.Mood
+import com.bloomee.app.domain.model.NutritionEntry
 import com.bloomee.app.domain.model.Symptom
 import java.time.LocalDate
 
@@ -60,4 +62,34 @@ data class HydrationDayEntity(
         consumedMl = consumedMl,
         goalMl = goalMl
     )
+}
+
+// A single logged food item. The id is a client-generated UUID rather than an
+// autoincrement so entries stay mergeable when cloud sync is enabled.
+@Entity(tableName = "nutrition_entries")
+data class NutritionEntryEntity(
+    @PrimaryKey val id: String,
+    val date: String,
+    val meal: String,
+    val name: String,
+    val kcal: Int,
+    val updatedAt: Long = System.currentTimeMillis()
+) {
+    fun toDomain(): NutritionEntry = NutritionEntry(
+        id = id,
+        date = LocalDate.parse(date),
+        meal = Meal.fromName(meal),
+        name = name,
+        kcal = kcal
+    )
+
+    companion object {
+        fun fromDomain(entry: NutritionEntry) = NutritionEntryEntity(
+            id = entry.id,
+            date = entry.date.toString(),
+            meal = entry.meal.name,
+            name = entry.name,
+            kcal = entry.kcal
+        )
+    }
 }

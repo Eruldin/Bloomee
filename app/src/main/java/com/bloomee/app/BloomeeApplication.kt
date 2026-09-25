@@ -8,6 +8,7 @@ import com.bloomee.app.data.local.BloomeeDatabase
 import com.bloomee.app.data.prefs.UserPreferencesRepository
 import com.bloomee.app.data.repository.CycleRepository
 import com.bloomee.app.data.repository.HydrationRepository
+import com.bloomee.app.data.repository.NutritionRepository
 import com.bloomee.app.data.sync.CloudSync
 import com.bloomee.app.data.sync.FirebaseCloudSync
 import com.bloomee.app.notification.Notifications
@@ -25,7 +26,13 @@ class AppContainer(context: Context) {
     val userPreferencesRepository = UserPreferencesRepository(context)
     val cycleRepository = CycleRepository(database.dailyLogDao(), cloudSync)
     val hydrationRepository = HydrationRepository(database.hydrationDao(), cloudSync)
-    val backupRepository = BackupRepository(context, cycleRepository, hydrationRepository)
+    val nutritionRepository = NutritionRepository(database.nutritionDao(), cloudSync)
+    val backupRepository = BackupRepository(
+        context,
+        cycleRepository,
+        hydrationRepository,
+        nutritionRepository
+    )
     val assistantClient = AssistantClient()
 }
 
@@ -46,7 +53,11 @@ class BloomeeApplication : Application() {
             container.cloudSync.setEnabled(profile.cloudSyncEnabled)
             ReminderScheduler.schedule(this@BloomeeApplication, profile)
             if (profile.cloudSyncEnabled) {
-                container.cloudSync.syncNow(container.cycleRepository, container.hydrationRepository)
+                container.cloudSync.syncNow(
+                    container.cycleRepository,
+                    container.hydrationRepository,
+                    container.nutritionRepository
+                )
             }
         }
     }
