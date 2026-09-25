@@ -220,7 +220,7 @@ private fun DayCell(
 
     Box(
         modifier = Modifier
-            .size(38.dp)
+            .size(44.dp)
             .clip(CircleShape)
             .background(background)
             .then(

@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bloomee.app.shared.theme.BloomeeColors
 import com.bloomee.app.shared.theme.ShadeValues
+import com.bloomee.app.shared.theme.SurfaceTones
 import com.bloomee.app.shared.theme.UiPalette
 
 private fun ShadeValues.toFamily() =
@@ -21,13 +22,24 @@ private fun ShadeValues.toFamily() =
 
 data class ShadeFamily(val soft: Color, val light: Color, val main: Color, val deep: Color)
 
+private data class SurfaceColors(
+    val background: Color,
+    val surface: Color,
+    val surfaceVariant: Color,
+    val backgroundDark: Color,
+    val surfaceDark: Color,
+    val surfaceVariantDark: Color
+)
+
+private fun SurfaceTones.toColors() = SurfaceColors(
+    Color(background), Color(surface), Color(surfaceVariant),
+    Color(backgroundDark), Color(surfaceDark), Color(surfaceVariantDark)
+)
+
 private val White = Color(BloomeeColors.PURE_WHITE)
-private val Sand100 = Color(BloomeeColors.SAND_100)
+private val Ink50 = Color(BloomeeColors.INK_50)
 private val Ink900 = Color(BloomeeColors.INK_900)
 private val Ink700 = Color(BloomeeColors.INK_700)
-private val Rose50 = Color(BloomeeColors.ROSE_50)
-private val SurfaceDark = Color(BloomeeColors.SURFACE_DARK)
-private val SurfaceDarkElevated = Color(BloomeeColors.SURFACE_DARK_ELEVATED)
 
 val FlowSpotting = Color(BloomeeColors.FLOW_SPOTTING)
 val FlowLight = Color(BloomeeColors.FLOW_LIGHT)
@@ -40,6 +52,7 @@ private fun lightScheme(palette: UiPalette): androidx.compose.material3.ColorSch
     val primary = palette.primary.toFamily()
     val secondary = palette.secondary.toFamily()
     val tertiary = palette.tertiary.toFamily()
+    val surfaces = palette.surfaces.toColors()
     return lightColorScheme(
         primary = primary.main,
         onPrimary = White,
@@ -53,11 +66,11 @@ private fun lightScheme(palette: UiPalette): androidx.compose.material3.ColorSch
         onTertiary = White,
         tertiaryContainer = tertiary.soft,
         onTertiaryContainer = tertiary.deep,
-        background = Sand100,
+        background = surfaces.background,
         onBackground = Ink900,
-        surface = White,
+        surface = surfaces.surface,
         onSurface = Ink900,
-        surfaceVariant = Rose50,
+        surfaceVariant = surfaces.surfaceVariant,
         onSurfaceVariant = Ink700,
         outline = primary.light,
         outlineVariant = primary.soft
@@ -68,6 +81,7 @@ private fun darkScheme(palette: UiPalette): androidx.compose.material3.ColorSche
     val primary = palette.primary.toFamily()
     val secondary = palette.secondary.toFamily()
     val tertiary = palette.tertiary.toFamily()
+    val surfaces = palette.surfaces.toColors()
     return darkColorScheme(
         primary = primary.light,
         onPrimary = Ink900,
@@ -81,11 +95,11 @@ private fun darkScheme(palette: UiPalette): androidx.compose.material3.ColorSche
         onTertiary = tertiary.deep,
         tertiaryContainer = tertiary.deep,
         onTertiaryContainer = tertiary.light,
-        background = SurfaceDark,
-        onBackground = Rose50,
-        surface = SurfaceDarkElevated,
-        onSurface = Rose50,
-        surfaceVariant = SurfaceDarkElevated,
+        background = surfaces.backgroundDark,
+        onBackground = Ink50,
+        surface = surfaces.surfaceDark,
+        onSurface = Ink50,
+        surfaceVariant = surfaces.surfaceVariantDark,
         onSurfaceVariant = secondary.light,
         outline = secondary.main,
         outlineVariant = secondary.deep

@@ -32,6 +32,7 @@ val Sunset700 = Color(BloomeeColors.SUNSET_700)
 
 val PureWhite = Color(BloomeeColors.PURE_WHITE)
 val Sand100 = Color(BloomeeColors.SAND_100)
+val Ink50 = Color(BloomeeColors.INK_50)
 val Ink900 = Color(BloomeeColors.INK_900)
 val Ink700 = Color(BloomeeColors.INK_700)
 val Ink500 = Color(BloomeeColors.INK_500)
