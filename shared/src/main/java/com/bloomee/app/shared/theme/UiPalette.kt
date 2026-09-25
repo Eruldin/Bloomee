@@ -66,11 +66,11 @@ enum class UiPalette(
     val secondary: ShadeValues,
     val tertiary: ShadeValues
 ) {
-    ROSE("rose", "Gül", RoseShades, PlumShades, AquaShades),
-    LAVENDER("lavender", "Lavanta", PlumShades, RoseShades, AquaShades),
-    OCEAN("ocean", "Okyanus", AquaShades, PlumShades, RoseShades),
-    FOREST("forest", "Orman", ForestShades, AquaShades, RoseShades),
-    SUNSET("sunset", "Gün batımı", SunsetShades, RoseShades, AquaShades);
+    ROSE("rose", "Gül", RoseShades, RoseShades, RoseShades),
+    LAVENDER("lavender", "Lavanta", PlumShades, PlumShades, PlumShades),
+    OCEAN("ocean", "Okyanus", AquaShades, AquaShades, AquaShades),
+    FOREST("forest", "Orman", ForestShades, ForestShades, ForestShades),
+    SUNSET("sunset", "Gün batımı", SunsetShades, SunsetShades, SunsetShades);
 
     companion object {
         val DEFAULT = ROSE
