@@ -13,9 +13,15 @@ import com.bloomee.app.domain.model.ActivityLevel
 import com.bloomee.app.domain.model.ThemeMode
 import com.bloomee.app.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "bloomee_profile")
+
+// API keys live in their own store so the Android auto-backup rules can exclude
+// just this file while profile prefs still migrate to a new device.
+private val Context.secretsDataStore: DataStore<Preferences> by preferencesDataStore(name = "bloomee_secrets")
 
 class UserPreferencesRepository(private val context: Context) {
 
@@ -41,7 +47,11 @@ class UserPreferencesRepository(private val context: Context) {
         val onboardingCompleted = booleanPreferencesKey("onboarding_completed")
     }
 
-    val profile: Flow<UserProfile> = context.dataStore.data.map { prefs ->
+    private val secrets: Flow<String> = context.secretsDataStore.data.map { prefs ->
+        prefs[Keys.assistantApiKey].orEmpty()
+    }
+
+    val profile: Flow<UserProfile> = combine(context.dataStore.data, secrets) { prefs, apiKey ->
         UserProfile(
             displayName = prefs[Keys.displayName].orEmpty(),
             birthYear = prefs[Keys.birthYear],
@@ -60,7 +70,8 @@ class UserPreferencesRepository(private val context: Context) {
             reminderMedicationEnabled = prefs[Keys.reminderMedication] ?: false,
             medicationReminderHour = prefs[Keys.medicationHour] ?: 21,
             cloudSyncEnabled = prefs[Keys.cloudSync] ?: false,
-            assistantApiKey = prefs[Keys.assistantApiKey].orEmpty(),
+            // Falls back to the legacy location so installs from before the split keep working.
+            assistantApiKey = apiKey.ifEmpty { prefs[Keys.assistantApiKey].orEmpty() },
             themeName = prefs[Keys.themeName] ?: "rose",
             themeMode = ThemeMode.fromName(prefs[Keys.themeMode]),
             onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false
@@ -68,6 +79,8 @@ class UserPreferencesRepository(private val context: Context) {
     }
 
     suspend fun update(transform: (UserProfile) -> UserProfile) {
+        val storedKey = context.secretsDataStore.data.first()[Keys.assistantApiKey].orEmpty()
+        var updated = UserProfile()
         context.dataStore.edit { prefs ->
             val current = UserProfile(
                 displayName = prefs[Keys.displayName].orEmpty(),
@@ -87,12 +100,12 @@ class UserPreferencesRepository(private val context: Context) {
                 reminderMedicationEnabled = prefs[Keys.reminderMedication] ?: false,
                 medicationReminderHour = prefs[Keys.medicationHour] ?: 21,
                 cloudSyncEnabled = prefs[Keys.cloudSync] ?: false,
-                assistantApiKey = prefs[Keys.assistantApiKey].orEmpty(),
+                assistantApiKey = storedKey.ifEmpty { prefs[Keys.assistantApiKey].orEmpty() },
                 themeName = prefs[Keys.themeName] ?: "rose",
                 themeMode = ThemeMode.fromName(prefs[Keys.themeMode]),
                 onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false
             )
-            val updated = transform(current)
+            updated = transform(current)
 
             prefs[Keys.displayName] = updated.displayName
             updated.birthYear?.let { prefs[Keys.birthYear] = it }
@@ -109,10 +122,14 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.reminderMedication] = updated.reminderMedicationEnabled
             prefs[Keys.medicationHour] = updated.medicationReminderHour
             prefs[Keys.cloudSync] = updated.cloudSyncEnabled
-            prefs[Keys.assistantApiKey] = updated.assistantApiKey
+            // Migrate out of the backed-up prefs file; see secretsDataStore above.
+            prefs.remove(Keys.assistantApiKey)
             prefs[Keys.themeName] = updated.themeName
             prefs[Keys.themeMode] = updated.themeMode.name
             prefs[Keys.onboardingCompleted] = updated.onboardingCompleted
+        }
+        context.secretsDataStore.edit { prefs ->
+            prefs[Keys.assistantApiKey] = updated.assistantApiKey
         }
     }
 }

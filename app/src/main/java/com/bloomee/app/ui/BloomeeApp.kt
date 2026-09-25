@@ -176,20 +176,13 @@ fun BloomeeApp(viewModel: BloomeeViewModel) {
 
             Destination.INSIGHTS -> InsightsScreen(
                 state = state,
-                onShareReport = {
-                    viewModel.exportBackup { file ->
-                        val uri = FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.fileprovider",
-                            file
-                        )
-                        val share = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/json"
-                            putExtra(Intent.EXTRA_STREAM, uri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(Intent.createChooser(share, "Raporu paylaş"))
+                onShareReport = { text ->
+                    val share = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, text)
+                        putExtra(Intent.EXTRA_SUBJECT, "Bloomee hekim özeti")
                     }
+                    context.startActivity(Intent.createChooser(share, "Raporu paylaş"))
                 },
                 modifier = contentModifier
             )

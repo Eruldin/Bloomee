@@ -84,6 +84,13 @@ class BackupRepository(
             val content = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                 ?: return@runCatching ImportResult(0, 0, 0, "Dosya okunamadı.")
             val root = JSONObject(content)
+            val version = root.optInt("version", 0)
+            if (version > BACKUP_VERSION) {
+                return@runCatching ImportResult(
+                    0, 0, 0,
+                    "Bu yedek daha yeni bir Bloomee sürümüyle (v$version) oluşturulmuş; uygulamayı güncelle."
+                )
+            }
 
             val logs = root.optJSONArray("dailyLogs") ?: JSONArray()
             val logEntities = (0 until logs.length()).map { index ->
@@ -129,7 +136,13 @@ class BackupRepository(
             hydrationRepository.importAll(hydrationEntities, replace)
             nutritionRepository.importAll(nutritionEntities, replace)
             ImportResult(logEntities.size, hydrationEntities.size, nutritionEntities.size, null)
-        }.getOrElse { ImportResult(0, 0, 0, it.message ?: "Yedek dosyası okunamadı.") }
+        }.getOrElse {
+            val detail = when (it) {
+                is org.json.JSONException -> "Dosya biçimi tanınamadı (geçerli bir Bloomee yedeği değil)."
+                else -> it.message ?: "Yedek dosyası okunamadı."
+            }
+            ImportResult(0, 0, 0, detail)
+        }
     }
 
     data class ImportResult(

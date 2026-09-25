@@ -10,6 +10,9 @@ import com.bloomee.app.domain.model.Symptom
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermission
 import java.time.LocalDate
 import java.util.UUID
 
@@ -145,6 +148,35 @@ class BloomeeStore(private val file: File = defaultFile()) {
 
         file.parentFile?.mkdirs()
         file.writeText(root.toString(2))
+        restrictToOwner(file)
+    }
+
+    /**
+     * Health data at rest should not be world-readable. On POSIX systems the
+     * store (and any exported backup) is limited to the owner; other platforms
+     * keep their default permissions.
+     */
+    private fun restrictToOwner(target: File) {
+        runCatching {
+            if (!FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+                return
+            }
+            val ownerOnly = setOf(
+                PosixFilePermission.OWNER_READ,
+                PosixFilePermission.OWNER_WRITE
+            )
+            Files.setPosixFilePermissions(target.toPath(), ownerOnly)
+            target.parentFile?.toPath()?.let { dir ->
+                Files.setPosixFilePermissions(
+                    dir,
+                    setOf(
+                        PosixFilePermission.OWNER_READ,
+                        PosixFilePermission.OWNER_WRITE,
+                        PosixFilePermission.OWNER_EXECUTE
+                    )
+                )
+            }
+        }
     }
 
     /** Merges a phone-exported `bloomee-yedek.json` into the current data. */

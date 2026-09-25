@@ -17,7 +17,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,10 +39,11 @@ private const val MHRS_URL = "https://www.mhrs.gov.tr"
 @Composable
 fun InsightsScreen(
     state: BloomeeUiState,
-    onShareReport: () -> Unit,
+    onShareReport: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var showReportDialog by remember { mutableStateOf(false) }
     val periods = remember(state.logs) { CyclePredictor.detectPeriods(state.logs) }
     val cycleLengths = periods.zipWithNext { current, next ->
         ChronoUnit.DAYS.between(current.first(), next.first()).toInt()
@@ -134,7 +138,10 @@ fun InsightsScreen(
 
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = onShareReport, modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = { showReportDialog = true },
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text("Hekim için rapor paylaş")
                 }
                 Button(
@@ -149,5 +156,16 @@ fun InsightsScreen(
                 }
             }
         }
+    }
+
+    if (showReportDialog) {
+        DoctorReportDialog(
+            state = state,
+            onShare = { text ->
+                showReportDialog = false
+                onShareReport(text)
+            },
+            onDismiss = { showReportDialog = false }
+        )
     }
 }

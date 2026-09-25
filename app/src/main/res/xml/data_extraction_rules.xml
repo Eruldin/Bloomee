@@ -2,8 +2,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="database" path="bloomee.db" />
+        <exclude domain="file" path="datastore/bloomee_secrets.preferences_pb" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="database" path="bloomee.db" />
+        <exclude domain="file" path="datastore/bloomee_secrets.preferences_pb" />
     </device-transfer>
 </data-extraction-rules>
