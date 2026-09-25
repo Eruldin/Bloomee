@@ -22,6 +22,7 @@ class UserPreferencesRepository(private val context: Context) {
         val displayName = stringPreferencesKey("display_name")
         val birthYear = intPreferencesKey("birth_year")
         val weightKg = doublePreferencesKey("weight_kg")
+        val heightCm = intPreferencesKey("height_cm")
         val activityLevel = stringPreferencesKey("activity_level")
         val cycleLength = intPreferencesKey("cycle_length")
         val periodLength = intPreferencesKey("period_length")
@@ -34,6 +35,7 @@ class UserPreferencesRepository(private val context: Context) {
         val medicationHour = intPreferencesKey("medication_hour")
         val cloudSync = booleanPreferencesKey("cloud_sync")
         val assistantApiKey = stringPreferencesKey("assistant_api_key")
+        val themeName = stringPreferencesKey("theme_name")
         val onboardingCompleted = booleanPreferencesKey("onboarding_completed")
     }
 
@@ -42,6 +44,7 @@ class UserPreferencesRepository(private val context: Context) {
             displayName = prefs[Keys.displayName].orEmpty(),
             birthYear = prefs[Keys.birthYear],
             weightKg = prefs[Keys.weightKg],
+            heightCm = prefs[Keys.heightCm],
             activityLevel = prefs[Keys.activityLevel]
                 ?.let { name -> ActivityLevel.entries.firstOrNull { it.name == name } }
                 ?: ActivityLevel.MODERATE,
@@ -56,6 +59,7 @@ class UserPreferencesRepository(private val context: Context) {
             medicationReminderHour = prefs[Keys.medicationHour] ?: 21,
             cloudSyncEnabled = prefs[Keys.cloudSync] ?: false,
             assistantApiKey = prefs[Keys.assistantApiKey].orEmpty(),
+            themeName = prefs[Keys.themeName] ?: "rose",
             onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false
         )
     }
@@ -66,6 +70,7 @@ class UserPreferencesRepository(private val context: Context) {
                 displayName = prefs[Keys.displayName].orEmpty(),
                 birthYear = prefs[Keys.birthYear],
                 weightKg = prefs[Keys.weightKg],
+                heightCm = prefs[Keys.heightCm],
                 activityLevel = prefs[Keys.activityLevel]
                     ?.let { name -> ActivityLevel.entries.firstOrNull { it.name == name } }
                     ?: ActivityLevel.MODERATE,
@@ -80,6 +85,7 @@ class UserPreferencesRepository(private val context: Context) {
                 medicationReminderHour = prefs[Keys.medicationHour] ?: 21,
                 cloudSyncEnabled = prefs[Keys.cloudSync] ?: false,
                 assistantApiKey = prefs[Keys.assistantApiKey].orEmpty(),
+                themeName = prefs[Keys.themeName] ?: "rose",
                 onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false
             )
             val updated = transform(current)
@@ -87,6 +93,7 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.displayName] = updated.displayName
             updated.birthYear?.let { prefs[Keys.birthYear] = it }
             updated.weightKg?.let { prefs[Keys.weightKg] = it }
+            updated.heightCm?.let { prefs[Keys.heightCm] = it }
             prefs[Keys.activityLevel] = updated.activityLevel.name
             prefs[Keys.cycleLength] = updated.defaultCycleLength
             prefs[Keys.periodLength] = updated.defaultPeriodLength
@@ -99,6 +106,7 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.medicationHour] = updated.medicationReminderHour
             prefs[Keys.cloudSync] = updated.cloudSyncEnabled
             prefs[Keys.assistantApiKey] = updated.assistantApiKey
+            prefs[Keys.themeName] = updated.themeName
             prefs[Keys.onboardingCompleted] = updated.onboardingCompleted
         }
     }

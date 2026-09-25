@@ -52,3 +52,25 @@ interface HydrationDao {
     @Query("DELETE FROM hydration_days")
     suspend fun clear()
 }
+
+@Dao
+interface NutritionDao {
+
+    @Query("SELECT * FROM nutrition_entries ORDER BY date ASC, id ASC")
+    fun observeAll(): Flow<List<NutritionEntryEntity>>
+
+    @Query("SELECT * FROM nutrition_entries ORDER BY date ASC, id ASC")
+    suspend fun getAll(): List<NutritionEntryEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: NutritionEntryEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(entities: List<NutritionEntryEntity>)
+
+    @Query("DELETE FROM nutrition_entries WHERE id = :id")
+    suspend fun delete(id: String)
+
+    @Query("DELETE FROM nutrition_entries")
+    suspend fun clear()
+}

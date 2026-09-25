@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ import com.bloomee.app.ui.screens.DailyLogSheet
 import com.bloomee.app.ui.screens.HomeScreen
 import com.bloomee.app.ui.screens.HydrationScreen
 import com.bloomee.app.ui.screens.InsightsScreen
+import com.bloomee.app.ui.screens.NutritionScreen
 import com.bloomee.app.ui.screens.OnboardingScreen
 import com.bloomee.app.ui.screens.SettingsScreen
 import java.time.LocalDate
@@ -50,6 +52,7 @@ private enum class Destination(val label: String, val icon: ImageVector) {
     HOME("Bugün", Icons.Default.Favorite),
     CALENDAR("Takvim", Icons.Default.CalendarMonth),
     HYDRATION("Su", Icons.Default.WaterDrop),
+    NUTRITION("Kalori", Icons.Default.Restaurant),
     INSIGHTS("İçgörüler", Icons.Default.Insights),
     SETTINGS("Ayarlar", Icons.Default.Settings)
 }
@@ -133,6 +136,7 @@ fun BloomeeApp(viewModel: BloomeeViewModel) {
                 onLogToday = { editingLog = viewModel.logFor(LocalDate.now()) },
                 onAddWater = viewModel::addWater,
                 onOpenAssistant = { assistantVisible = true },
+                onOpenNutrition = { destination = Destination.NUTRITION },
                 modifier = contentModifier
             )
 
@@ -146,6 +150,13 @@ fun BloomeeApp(viewModel: BloomeeViewModel) {
                 state = state,
                 onAddWater = viewModel::addWater,
                 onReset = viewModel::resetWater,
+                modifier = contentModifier
+            )
+
+            Destination.NUTRITION -> NutritionScreen(
+                state = state,
+                onAddEntry = viewModel::addNutritionEntry,
+                onRemoveEntry = viewModel::removeNutritionEntry,
                 modifier = contentModifier
             )
 

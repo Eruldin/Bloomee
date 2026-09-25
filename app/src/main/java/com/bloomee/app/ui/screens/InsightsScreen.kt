@@ -1,5 +1,7 @@
 package com.bloomee.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -18,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.bloomee.app.domain.model.Symptom
 import com.bloomee.app.domain.prediction.CyclePredictor
@@ -27,12 +31,15 @@ import com.bloomee.app.ui.components.LabeledValue
 import com.bloomee.app.ui.components.SectionTitle
 import java.time.temporal.ChronoUnit
 
+private const val MHRS_URL = "https://www.mhrs.gov.tr"
+
 @Composable
 fun InsightsScreen(
     state: BloomeeUiState,
     onShareReport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val periods = remember(state.logs) { CyclePredictor.detectPeriods(state.logs) }
     val cycleLengths = periods.zipWithNext { current, next ->
         ChronoUnit.DAYS.between(current.first(), next.first()).toInt()
@@ -126,8 +133,20 @@ fun InsightsScreen(
         }
 
         item {
-            OutlinedButton(onClick = onShareReport, modifier = Modifier.fillMaxWidth()) {
-                Text("Hekim için rapor paylaş")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onShareReport, modifier = Modifier.weight(1f)) {
+                    Text("Hekim için rapor paylaş")
+                }
+                Button(
+                    onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(MHRS_URL))
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Randevu al")
+                }
             }
         }
     }

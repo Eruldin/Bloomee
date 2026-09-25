@@ -9,6 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bloomee.app.ui.BloomeeApp
 import com.bloomee.app.ui.BloomeeViewModel
@@ -20,7 +22,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            BloomeeTheme {
+            val appViewModel: BloomeeViewModel = viewModel(factory = BloomeeViewModel.Factory)
+            val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
+            BloomeeTheme(paletteName = uiState.profile.themeName) {
                 val notificationPermission = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission()
                 ) { }
@@ -29,9 +33,7 @@ class MainActivity : ComponentActivity() {
                         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }
-                BloomeeApp(
-                    viewModel = viewModel(factory = BloomeeViewModel.Factory)
-                )
+                BloomeeApp(viewModel = appViewModel)
             }
         }
     }

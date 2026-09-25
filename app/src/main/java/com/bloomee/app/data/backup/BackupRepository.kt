@@ -4,19 +4,23 @@ import android.content.Context
 import android.net.Uri
 import com.bloomee.app.data.local.DailyLogEntity
 import com.bloomee.app.data.local.HydrationDayEntity
+import com.bloomee.app.data.local.NutritionEntryEntity
 import com.bloomee.app.data.repository.CycleRepository
 import com.bloomee.app.data.repository.HydrationRepository
+import com.bloomee.app.data.repository.NutritionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.UUID
 
 /** Human-readable JSON backup, usable as an offline transfer between devices. */
 class BackupRepository(
     private val context: Context,
     private val cycleRepository: CycleRepository,
-    private val hydrationRepository: HydrationRepository
+    private val hydrationRepository: HydrationRepository,
+    private val nutritionRepository: NutritionRepository
 ) {
 
     suspend fun exportToCacheFile(): File = withContext(Dispatchers.IO) {
@@ -55,6 +59,21 @@ class BackupRepository(
         }
         root.put("hydration", hydration)
 
+        val nutrition = JSONArray()
+        nutritionRepository.exportAll().forEach { entity ->
+            nutrition.put(
+                JSONObject().apply {
+                    put("id", entity.id)
+                    put("date", entity.date)
+                    put("meal", entity.meal)
+                    put("name", entity.name)
+                    put("kcal", entity.kcal)
+                    put("updatedAt", entity.updatedAt)
+                }
+            )
+        }
+        root.put("nutrition", nutrition)
+
         File(context.cacheDir, "bloomee-yedek.json").apply {
             writeText(root.toString(2))
         }
@@ -63,7 +82,7 @@ class BackupRepository(
     suspend fun importFrom(uri: Uri, replace: Boolean): ImportResult = withContext(Dispatchers.IO) {
         runCatching {
             val content = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                ?: return@runCatching ImportResult(0, 0, "Dosya okunamadı.")
+                ?: return@runCatching ImportResult(0, 0, 0, "Dosya okunamadı.")
             val root = JSONObject(content)
 
             val logs = root.optJSONArray("dailyLogs") ?: JSONArray()
@@ -93,13 +112,32 @@ class BackupRepository(
                 )
             }
 
+            val nutrition = root.optJSONArray("nutrition") ?: JSONArray()
+            val nutritionEntities = (0 until nutrition.length()).map { index ->
+                val item = nutrition.getJSONObject(index)
+                NutritionEntryEntity(
+                    id = item.optString("id").ifBlank { UUID.randomUUID().toString() },
+                    date = item.getString("date"),
+                    meal = item.optString("meal", "SNACK"),
+                    name = item.optString("name"),
+                    kcal = item.optInt("kcal"),
+                    updatedAt = item.optLong("updatedAt", System.currentTimeMillis())
+                )
+            }
+
             cycleRepository.importAll(logEntities, replace)
             hydrationRepository.importAll(hydrationEntities, replace)
-            ImportResult(logEntities.size, hydrationEntities.size, null)
-        }.getOrElse { ImportResult(0, 0, it.message ?: "Yedek dosyası okunamadı.") }
+            nutritionRepository.importAll(nutritionEntities, replace)
+            ImportResult(logEntities.size, hydrationEntities.size, nutritionEntities.size, null)
+        }.getOrElse { ImportResult(0, 0, 0, it.message ?: "Yedek dosyası okunamadı.") }
     }
 
-    data class ImportResult(val logCount: Int, val hydrationCount: Int, val error: String?)
+    data class ImportResult(
+        val logCount: Int,
+        val hydrationCount: Int,
+        val nutritionCount: Int,
+        val error: String?
+    )
 
     private companion object {
         const val BACKUP_VERSION = 1

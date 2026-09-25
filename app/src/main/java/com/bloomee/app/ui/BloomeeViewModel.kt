@@ -16,7 +16,11 @@ import com.bloomee.app.domain.model.CycleStats
 import com.bloomee.app.domain.model.DailyLog
 import com.bloomee.app.domain.model.FertilityLevel
 import com.bloomee.app.domain.model.HydrationDay
+import com.bloomee.app.domain.model.Meal
+import com.bloomee.app.domain.model.NutritionDay
+import com.bloomee.app.domain.model.NutritionEntry
 import com.bloomee.app.domain.model.UserProfile
+import com.bloomee.app.domain.nutrition.CalorieCalculator
 import com.bloomee.app.domain.prediction.CyclePredictor
 import com.bloomee.app.notification.ReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +39,8 @@ data class BloomeeUiState(
     val stats: CycleStats = EMPTY_STATS,
     val hydrationToday: HydrationDay = HydrationDay(LocalDate.now(), 0, 2000),
     val hydrationHistory: List<HydrationDay> = emptyList(),
+    val nutritionToday: NutritionDay = NutritionDay(LocalDate.now(), emptyList(), 2000),
+    val nutritionHistory: List<NutritionEntry> = emptyList(),
     val advice: List<AdviceCard> = emptyList(),
     val predictedPeriodDays: Set<LocalDate> = emptySet(),
     val syncState: SyncState = SyncState.UNCONFIGURED,
@@ -81,8 +87,9 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
         container.userPreferencesRepository.profile,
         container.cycleRepository.logs,
         container.hydrationRepository.days,
+        container.nutritionRepository.entries,
         container.cloudSync.state
-    ) { profile, logs, hydrationDays, syncState ->
+    ) { profile, logs, hydrationDays, nutritionEntries, syncState ->
         val today = LocalDate.now()
         val stats = CyclePredictor.calculate(
             logs = logs,
@@ -98,6 +105,13 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
         val hydrationToday = hydrationDays.firstOrNull { it.date == today }
             ?: HydrationDay(today, 0, goal)
         val todayLog = logs.firstOrNull { it.date == today }
+        val calorieGoal = CalorieCalculator.dailyGoalKcal(
+            weightKg = profile.weightKg,
+            heightCm = profile.heightCm,
+            birthYear = profile.birthYear,
+            activityLevel = profile.activityLevel,
+            today = today
+        )
 
         BloomeeUiState(
             profile = profile,
@@ -105,6 +119,12 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
             stats = stats,
             hydrationToday = hydrationToday.copy(goalMl = if (hydrationToday.goalMl > 0) hydrationToday.goalMl else goal),
             hydrationHistory = hydrationDays,
+            nutritionToday = NutritionDay(
+                date = today,
+                entries = nutritionEntries.filter { it.date == today },
+                goalKcal = calorieGoal
+            ),
+            nutritionHistory = nutritionEntries,
             advice = AdviceEngine.cardsFor(stats, todayLog, hydrationToday),
             predictedPeriodDays = CyclePredictor.predictedPeriodDays(stats),
             syncState = syncState,
@@ -140,6 +160,20 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun addNutritionEntry(name: String, kcal: Int, meal: Meal) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || kcal <= 0) return
+        viewModelScope.launch {
+            container.nutritionRepository.save(
+                NutritionEntry(date = LocalDate.now(), meal = meal, name = trimmed, kcal = kcal)
+            )
+        }
+    }
+
+    fun removeNutritionEntry(id: String) {
+        viewModelScope.launch { container.nutritionRepository.delete(id) }
+    }
+
     fun updateProfile(transform: (UserProfile) -> UserProfile) {
         viewModelScope.launch {
             container.userPreferencesRepository.update(transform)
@@ -151,7 +185,11 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
 
     fun syncNow() {
         viewModelScope.launch {
-            container.cloudSync.syncNow(container.cycleRepository, container.hydrationRepository)
+            container.cloudSync.syncNow(
+                container.cycleRepository,
+                container.hydrationRepository,
+                container.nutritionRepository
+            )
         }
     }
 
@@ -163,7 +201,7 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val result = container.backupRepository.importFrom(uri, replace)
             _toast.value = result.error
-                ?: "${result.logCount} günlük, ${result.hydrationCount} su kaydı geri yüklendi."
+                ?: "${result.logCount} günlük, ${result.hydrationCount} su, ${result.nutritionCount} beslenme kaydı geri yüklendi."
         }
     }
 
@@ -182,6 +220,7 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
                 appendLine("- Ortalama döngü: ${state.stats.averageCycleLength} gün")
                 state.stats.daysToNextPeriod?.let { appendLine("- Tahmini regle kalan: $it gün") }
                 appendLine("- Bugünkü su: ${state.hydrationToday.consumedMl}/${state.hydrationToday.goalMl} ml")
+                appendLine("- Bugünkü kalori: ${state.nutritionToday.consumedKcal}/${state.nutritionToday.goalKcal} kcal")
                 state.todayLog?.symptoms?.takeIf { it.isNotEmpty() }?.let { symptoms ->
                     appendLine("- Bugünkü belirtiler: ${symptoms.joinToString { it.label }}")
                 }
