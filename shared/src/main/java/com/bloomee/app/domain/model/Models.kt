@@ -142,6 +142,16 @@ data class NutritionDay(
         get() = if (goalKcal <= 0) 0f else (consumedKcal.toFloat() / goalKcal).coerceIn(0f, 1f)
 }
 
+enum class ThemeMode(val label: String) {
+    SYSTEM("Sistem"),
+    LIGHT("Açık"),
+    DARK("Koyu");
+
+    companion object {
+        fun fromName(value: String?): ThemeMode = entries.firstOrNull { it.name == value } ?: SYSTEM
+    }
+}
+
 data class UserProfile(
     val displayName: String = "",
     val birthYear: Int? = null,
@@ -160,5 +170,6 @@ data class UserProfile(
     val cloudSyncEnabled: Boolean = false,
     val assistantApiKey: String = "",
     val themeName: String = "rose",
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val onboardingCompleted: Boolean = false
 )

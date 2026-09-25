@@ -21,8 +21,8 @@ private fun colorsFor(palette: UiPalette) = Colors(
     error = Color(BloomeeColors.WARNING_AMBER),
     onPrimary = Color(BloomeeColors.INK_900),
     onSecondary = Color(BloomeeColors.PURE_WHITE),
-    onBackground = Color(BloomeeColors.ROSE_50),
-    onSurface = Color(BloomeeColors.ROSE_50),
+    onBackground = Color(BloomeeColors.INK_50),
+    onSurface = Color(BloomeeColors.INK_50),
     onError = Color(BloomeeColors.INK_900)
 )
 

@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import com.bloomee.app.domain.model.ThemeMode
 
 private fun lightScheme(palette: ThemePalette) = lightColorScheme(
     primary = palette.primary.main,
@@ -30,11 +31,11 @@ private fun lightScheme(palette: ThemePalette) = lightColorScheme(
     onTertiary = PureWhite,
     tertiaryContainer = palette.tertiary.soft,
     onTertiaryContainer = palette.tertiary.deep,
-    background = Sand100,
+    background = palette.surfaces.background,
     onBackground = Ink900,
-    surface = PureWhite,
+    surface = palette.surfaces.surface,
     onSurface = Ink900,
-    surfaceVariant = Rose50,
+    surfaceVariant = palette.surfaces.surfaceVariant,
     onSurfaceVariant = Ink700,
     outline = palette.primary.light,
     outlineVariant = palette.primary.soft
@@ -53,11 +54,11 @@ private fun darkScheme(palette: ThemePalette) = darkColorScheme(
     onTertiary = palette.tertiary.deep,
     tertiaryContainer = palette.tertiary.deep,
     onTertiaryContainer = palette.tertiary.light,
-    background = SurfaceDark,
-    onBackground = Rose50,
-    surface = SurfaceDarkElevated,
-    onSurface = Rose50,
-    surfaceVariant = SurfaceDarkElevated,
+    background = palette.surfaces.backgroundDark,
+    onBackground = Ink50,
+    surface = palette.surfaces.surfaceDark,
+    onSurface = Ink50,
+    surfaceVariant = palette.surfaces.surfaceVariantDark,
     onSurfaceVariant = palette.secondary.light,
     outline = palette.secondary.main,
     outlineVariant = palette.secondary.deep
@@ -86,10 +87,15 @@ private val BloomeeShapes = Shapes(
 @Composable
 fun BloomeeTheme(
     paletteName: String = ThemePalette.DEFAULT.key,
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {
     val palette = ThemePalette.fromKey(paletteName)
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
     val colorScheme = if (darkTheme) darkScheme(palette) else lightScheme(palette)
     val view = LocalView.current
     if (!view.isInEditMode) {

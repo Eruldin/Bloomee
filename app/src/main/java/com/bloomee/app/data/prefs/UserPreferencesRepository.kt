@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bloomee.app.domain.model.ActivityLevel
+import com.bloomee.app.domain.model.ThemeMode
 import com.bloomee.app.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -36,6 +37,7 @@ class UserPreferencesRepository(private val context: Context) {
         val cloudSync = booleanPreferencesKey("cloud_sync")
         val assistantApiKey = stringPreferencesKey("assistant_api_key")
         val themeName = stringPreferencesKey("theme_name")
+        val themeMode = stringPreferencesKey("theme_mode")
         val onboardingCompleted = booleanPreferencesKey("onboarding_completed")
     }
 
@@ -60,6 +62,7 @@ class UserPreferencesRepository(private val context: Context) {
             cloudSyncEnabled = prefs[Keys.cloudSync] ?: false,
             assistantApiKey = prefs[Keys.assistantApiKey].orEmpty(),
             themeName = prefs[Keys.themeName] ?: "rose",
+            themeMode = ThemeMode.fromName(prefs[Keys.themeMode]),
             onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false
         )
     }
@@ -86,6 +89,7 @@ class UserPreferencesRepository(private val context: Context) {
                 cloudSyncEnabled = prefs[Keys.cloudSync] ?: false,
                 assistantApiKey = prefs[Keys.assistantApiKey].orEmpty(),
                 themeName = prefs[Keys.themeName] ?: "rose",
+                themeMode = ThemeMode.fromName(prefs[Keys.themeMode]),
                 onboardingCompleted = prefs[Keys.onboardingCompleted] ?: false
             )
             val updated = transform(current)
@@ -107,6 +111,7 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.cloudSync] = updated.cloudSyncEnabled
             prefs[Keys.assistantApiKey] = updated.assistantApiKey
             prefs[Keys.themeName] = updated.themeName
+            prefs[Keys.themeMode] = updated.themeMode.name
             prefs[Keys.onboardingCompleted] = updated.onboardingCompleted
         }
     }

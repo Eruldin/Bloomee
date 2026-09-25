@@ -32,7 +32,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.bloomee.app.data.sync.SyncState
 import com.bloomee.app.domain.model.ActivityLevel
+import com.bloomee.app.domain.model.ThemeMode
 import com.bloomee.app.domain.model.UserProfile
+import com.bloomee.app.notification.rememberNotificationPermissionRequest
 import com.bloomee.app.ui.BloomeeUiState
 import com.bloomee.app.ui.components.BloomeeCard
 import com.bloomee.app.ui.components.SectionTitle
@@ -55,6 +57,7 @@ fun SettingsScreen(
     var birthYear by remember(profile.birthYear) { mutableStateOf(profile.birthYear?.toString().orEmpty()) }
     var apiKey by remember(profile.assistantApiKey) { mutableStateOf(profile.assistantApiKey) }
     var partnerName by remember(profile.partnerName) { mutableStateOf(profile.partnerName) }
+    val requestNotificationPermission = rememberNotificationPermissionRequest()
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
@@ -168,6 +171,19 @@ fun SettingsScreen(
                         )
                     }
                 }
+                Spacer(Modifier.height(10.dp))
+                Text("Görünüm", style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ThemeMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = profile.themeMode == mode,
+                            onClick = {
+                                onUpdateProfile { it.copy(themeMode = mode) }
+                            },
+                            label = { Text(mode.label) }
+                        )
+                    }
+                }
             }
         }
 
@@ -204,12 +220,15 @@ fun SettingsScreen(
                 Spacer(Modifier.height(4.dp))
                 SwitchRow("Su hatırlatıcısı", profile.reminderHydrationEnabled) { enabled ->
                     onUpdateProfile { it.copy(reminderHydrationEnabled = enabled) }
+                    if (enabled) requestNotificationPermission()
                 }
                 SwitchRow("Regl yaklaşma bildirimi", profile.reminderPeriodEnabled) { enabled ->
                     onUpdateProfile { it.copy(reminderPeriodEnabled = enabled) }
+                    if (enabled) requestNotificationPermission()
                 }
                 SwitchRow("İlaç hatırlatıcısı", profile.reminderMedicationEnabled) { enabled ->
                     onUpdateProfile { it.copy(reminderMedicationEnabled = enabled) }
+                    if (enabled) requestNotificationPermission()
                 }
                 if (profile.reminderMedicationEnabled) {
                     StepperRow(
