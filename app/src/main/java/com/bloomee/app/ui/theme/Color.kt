@@ -1,47 +1,48 @@
 package com.bloomee.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.bloomee.app.shared.theme.BloomeeColors
 
 // Brand palette: warm rose + plum, kept low-saturation so health data stays readable.
-val Rose50 = Color(0xFFFFF1F4)
-val Rose100 = Color(0xFFFFE0E7)
-val Rose200 = Color(0xFFFFC2CF)
-val Rose400 = Color(0xFFF2708F)
-val Rose500 = Color(0xFFD94E73)
-val Rose700 = Color(0xFFA3204A)
+// Values live in the shared module so desktop and Wear use the same brand colors.
+val Rose50 = Color(BloomeeColors.ROSE_50)
+val Rose100 = Color(BloomeeColors.ROSE_100)
+val Rose400 = Color(BloomeeColors.ROSE_400)
+val Rose500 = Color(BloomeeColors.ROSE_500)
+val Rose700 = Color(BloomeeColors.ROSE_700)
 
-val Plum200 = Color(0xFFD9C4EA)
-val Plum500 = Color(0xFF7A5AA0)
-val Plum700 = Color(0xFF4B3268)
+val Plum200 = Color(BloomeeColors.PLUM_200)
+val Plum500 = Color(BloomeeColors.PLUM_500)
+val Plum700 = Color(BloomeeColors.PLUM_700)
 
-val Aqua200 = Color(0xFFBCE6F2)
-val Aqua500 = Color(0xFF3AA6C4)
-val Aqua700 = Color(0xFF1C6C85)
+val Aqua200 = Color(BloomeeColors.AQUA_200)
+val Aqua500 = Color(BloomeeColors.AQUA_500)
+val Aqua700 = Color(BloomeeColors.AQUA_700)
 
 // Extra families for user-selectable theme palettes.
-val Forest200 = Color(0xFFBFE3D0)
-val Forest400 = Color(0xFF7CC29D)
-val Forest500 = Color(0xFF4E9A72)
-val Forest700 = Color(0xFF2E6B4C)
+val Forest200 = Color(BloomeeColors.FOREST_200)
+val Forest400 = Color(BloomeeColors.FOREST_400)
+val Forest500 = Color(BloomeeColors.FOREST_500)
+val Forest700 = Color(BloomeeColors.FOREST_700)
 
-val Sunset200 = Color(0xFFFCD7C5)
-val Sunset400 = Color(0xFFEE9B72)
-val Sunset500 = Color(0xFFD97B57)
-val Sunset700 = Color(0xFF9C4A2D)
+val Sunset200 = Color(BloomeeColors.SUNSET_200)
+val Sunset400 = Color(BloomeeColors.SUNSET_400)
+val Sunset500 = Color(BloomeeColors.SUNSET_500)
+val Sunset700 = Color(BloomeeColors.SUNSET_700)
 
-val PureWhite = Color(0xFFFFFFFF)
-val Sand100 = Color(0xFFFDF6F0)
-val Ink900 = Color(0xFF211B22)
-val Ink700 = Color(0xFF4A424C)
-val Ink500 = Color(0xFF7A727C)
+val PureWhite = Color(BloomeeColors.PURE_WHITE)
+val Sand100 = Color(BloomeeColors.SAND_100)
+val Ink900 = Color(BloomeeColors.INK_900)
+val Ink700 = Color(BloomeeColors.INK_700)
+val Ink500 = Color(BloomeeColors.INK_500)
 
-val SurfaceDark = Color(0xFF1A151C)
-val SurfaceDarkElevated = Color(0xFF241E27)
+val SurfaceDark = Color(BloomeeColors.SURFACE_DARK)
+val SurfaceDarkElevated = Color(BloomeeColors.SURFACE_DARK_ELEVATED)
 
 // Semantic accents used by flow levels, fertility and hydration indicators.
-val FlowSpotting = Color(0xFFF7C9D4)
-val FlowLight = Color(0xFFEF9BB1)
-val FlowMedium = Color(0xFFDD5C81)
-val FlowHeavy = Color(0xFFB02A50)
-val FertilePeak = Color(0xFF6BB88F)
-val WarningAmber = Color(0xFFC98A00)
+val FlowSpotting = Color(BloomeeColors.FLOW_SPOTTING)
+val FlowLight = Color(BloomeeColors.FLOW_LIGHT)
+val FlowMedium = Color(BloomeeColors.FLOW_MEDIUM)
+val FlowHeavy = Color(BloomeeColors.FLOW_HEAVY)
+val FertilePeak = Color(BloomeeColors.FERTILE_PEAK)
+val WarningAmber = Color(BloomeeColors.WARNING_AMBER)

@@ -1,6 +1,8 @@
 package com.bloomee.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.bloomee.app.shared.theme.ShadeValues
+import com.bloomee.app.shared.theme.UiPalette
 
 /**
  * One color family per theme role. [soft] fills containers in light mode and
@@ -15,24 +17,21 @@ data class ShadeFamily(
     val deep: Color
 )
 
-private val RoseFamily = ShadeFamily(Rose100, Rose400, Rose500, Rose700)
-private val PlumFamily = ShadeFamily(Plum200, Plum200, Plum500, Plum700)
-private val AquaFamily = ShadeFamily(Aqua200, Aqua200, Aqua500, Aqua700)
-private val ForestFamily = ShadeFamily(Forest200, Forest400, Forest500, Forest700)
-private val SunsetFamily = ShadeFamily(Sunset200, Sunset400, Sunset500, Sunset700)
+private fun ShadeValues.toFamily() =
+    ShadeFamily(Color(soft), Color(light), Color(main), Color(deep))
 
-enum class ThemePalette(
-    val key: String,
-    val label: String,
-    val primary: ShadeFamily,
-    val secondary: ShadeFamily,
-    val tertiary: ShadeFamily
-) {
-    ROSE("rose", "Gül", RoseFamily, PlumFamily, AquaFamily),
-    LAVENDER("lavender", "Lavanta", PlumFamily, RoseFamily, AquaFamily),
-    OCEAN("ocean", "Okyanus", AquaFamily, PlumFamily, RoseFamily),
-    FOREST("forest", "Orman", ForestFamily, AquaFamily, RoseFamily),
-    SUNSET("sunset", "Gün batımı", SunsetFamily, RoseFamily, AquaFamily);
+enum class ThemePalette(src: UiPalette) {
+    ROSE(UiPalette.ROSE),
+    LAVENDER(UiPalette.LAVENDER),
+    OCEAN(UiPalette.OCEAN),
+    FOREST(UiPalette.FOREST),
+    SUNSET(UiPalette.SUNSET);
+
+    val key: String = src.key
+    val label: String = src.label
+    val primary: ShadeFamily = src.primary.toFamily()
+    val secondary: ShadeFamily = src.secondary.toFamily()
+    val tertiary: ShadeFamily = src.tertiary.toFamily()
 
     companion object {
         val DEFAULT = ROSE

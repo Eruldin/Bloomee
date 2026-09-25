@@ -32,9 +32,20 @@ Uygulama offline-first çalışır: tüm veri Room ve DataStore ile cihazda tutu
 
 `app/google-services.json` yoksa Google Services eklentisi uygulanmaz ve bulut senkronu `UNCONFIGURED` durumunda kalır; uygulama tümüyle çevrimdışı çalışmaya devam eder. Dosya eklenince senkron Ayarlar'dan açılabilir: anonim Firebase kimliğiyle `users/{uid}/dailyLogs`, `users/{uid}/hydration` ve `users/{uid}/nutrition` altında `updatedAt` karşılaştırmalı son-yazan-kazanır birleştirme yapılır.
 
+## Platformlar
+
+| Modül | Hedef | Not |
+|-------|-------|-----|
+| `:app` | Android telefon/tablet (API 26+) | Ana uygulama |
+| `:wear` | Wear OS saatler (API 30+) | Özet arayüz + hızlı su/kalori ekleme |
+| `:desktop` | PC (Compose Desktop, JVM) | Ayrı masaüstü arayüz; `./gradlew :desktop:run` ile başlat |
+| `:shared` | Ortak Kotlin/JVM kütüphane | Domain katmanı + tema renk değerleri |
+
+Masaüstü uygulaması verilerini `~/.bloomee/bloomee-store.json` dosyasında tutar; şema telefonun `bloomee-yedek.json` yedeğiyle aynıdır, iki yönde içe/dışa aktarım "Profil ve veri" ekranından yapılır. Saat uygulaması şimdilik kendi yerel kaydını tutar (telefon senkronu sonraki aşama).
+
 ## CI
 
-`.github/workflows/android-ci.yml` her PR'da ve `main`'e push'ta GitHub üzerinde `lintDebug`, `testDebugUnitTest`, `assembleDebug` ve `bundleRelease` koşturur.
+`.github/workflows/android-ci.yml` her PR'da ve `main`'e push'ta GitHub üzerinde lint (telefon + saat), `testDebugUnitTest`, telefon + saat debug APK'ları, `:shared` + masaüstü derlemesi ve `bundleRelease` koşturur.
 
 `v*` etiketi push'lanınca `.github/workflows/release.yml` testleri koşturur, APK + AAB üretir ve bunları GitHub Release'e ekler (indirilebilir APK). İmzalı çıktı için repo secret'larına `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` ekle; yoksa imzasız üretilir.
 

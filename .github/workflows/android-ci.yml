@@ -29,13 +29,16 @@ jobs:
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Lint
-        run: ./gradlew lintDebug
+        run: ./gradlew lintDebug :wear:lintDebug
 
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Build phone + watch debug APKs
+        run: ./gradlew assembleDebug :wear:assembleDebug
+
+      - name: Build desktop app classes
+        run: ./gradlew :shared:build :desktop:compileKotlin
 
       - name: Build release AAB
         run: ./gradlew bundleRelease
