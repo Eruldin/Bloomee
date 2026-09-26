@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [DailyLogEntity::class, HydrationDayEntity::class, NutritionEntryEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class BloomeeDatabase : RoomDatabase() {
@@ -29,7 +29,7 @@ abstract class BloomeeDatabase : RoomDatabase() {
                 context.applicationContext,
                 BloomeeDatabase::class.java,
                 "bloomee.db"
-            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
         }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -40,6 +40,14 @@ abstract class BloomeeDatabase : RoomDatabase() {
                         "`name` TEXT NOT NULL, `kcal` INTEGER NOT NULL, " +
                         "`updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
                 )
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE daily_logs ADD COLUMN deletedAt INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE hydration_days ADD COLUMN deletedAt INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE nutrition_entries ADD COLUMN deletedAt INTEGER DEFAULT NULL")
             }
         }
     }

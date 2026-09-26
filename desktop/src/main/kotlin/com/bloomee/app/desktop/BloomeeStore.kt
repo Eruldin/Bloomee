@@ -37,6 +37,22 @@ class DesktopData {
     val hydrationGoalMl = sortedMapOf<LocalDate, Int>()
     val nutrition = mutableListOf<NutritionEntry>()
     var profile = DesktopProfile()
+
+    /**
+     * Per-record last-write stamps, keyed via [logKey]/[hydrationKey]/[nutritionKey].
+     * `save` writes these back verbatim so an unchanged record keeps its real
+     * `updatedAt` — required for last-write-wins merges against phone backups.
+     * A missing stamp (e.g. a pre-migration store file) is stamped once on save.
+     */
+    val updatedAt = mutableMapOf<String, Long>()
+
+    fun stampFor(key: String): Long = updatedAt.getOrPut(key) { System.currentTimeMillis() }
+
+    companion object {
+        fun logKey(date: LocalDate) = "log:$date"
+        fun hydrationKey(date: LocalDate) = "hyd:$date"
+        fun nutritionKey(id: String) = "nut:$id"
+    }
 }
 
 class BloomeeStore(private val file: File = defaultFile()) {
@@ -63,23 +79,30 @@ class BloomeeStore(private val file: File = defaultFile()) {
                     weightKg = item.optDouble("weightKg").takeIf { !it.isNaN() },
                     note = item.optString("note")
                 )
+                item.optLong("updatedAt").takeIf { it > 0 }
+                    ?.let { data.updatedAt[DesktopData.logKey(date)] = it }
             }
             root.optJSONArray("hydration")?.forEachObject { item ->
                 val date = runCatching { LocalDate.parse(item.getString("date")) }.getOrNull()
                     ?: return@forEachObject
                 data.hydrationMl[date] = item.optInt("consumedMl")
                 data.hydrationGoalMl[date] = item.optInt("goalMl", 2000)
+                item.optLong("updatedAt").takeIf { it > 0 }
+                    ?.let { data.updatedAt[DesktopData.hydrationKey(date)] = it }
             }
             root.optJSONArray("nutrition")?.forEachObject { item ->
                 val date = runCatching { LocalDate.parse(item.getString("date")) }.getOrNull()
                     ?: return@forEachObject
+                val id = item.optString("id").ifBlank { UUID.randomUUID().toString() }
                 data.nutrition += NutritionEntry(
-                    id = item.optString("id").ifBlank { UUID.randomUUID().toString() },
+                    id = id,
                     date = date,
                     meal = Meal.fromName(item.optString("meal", "SNACK")),
                     name = item.optString("name"),
                     kcal = item.optInt("kcal")
                 )
+                item.optLong("updatedAt").takeIf { it > 0 }
+                    ?.let { data.updatedAt[DesktopData.nutritionKey(id)] = it }
             }
         }
         return data
@@ -112,7 +135,7 @@ class BloomeeStore(private val file: File = defaultFile()) {
                     put("sleepHours", log.sleepHours ?: JSONObject.NULL)
                     put("weightKg", log.weightKg ?: JSONObject.NULL)
                     put("note", log.note)
-                    put("updatedAt", System.currentTimeMillis())
+                    put("updatedAt", data.stampFor(DesktopData.logKey(log.date)))
                 }
             )
         }
@@ -125,7 +148,7 @@ class BloomeeStore(private val file: File = defaultFile()) {
                     put("date", date.toString())
                     put("consumedMl", data.hydrationMl[date] ?: 0)
                     put("goalMl", data.hydrationGoalMl[date] ?: 2000)
-                    put("updatedAt", System.currentTimeMillis())
+                    put("updatedAt", data.stampFor(DesktopData.hydrationKey(date)))
                 }
             )
         }
@@ -140,7 +163,7 @@ class BloomeeStore(private val file: File = defaultFile()) {
                     put("meal", entry.meal.name)
                     put("name", entry.name)
                     put("kcal", entry.kcal)
-                    put("updatedAt", System.currentTimeMillis())
+                    put("updatedAt", data.stampFor(DesktopData.nutritionKey(entry.id)))
                 }
             )
         }
@@ -187,6 +210,9 @@ class BloomeeStore(private val file: File = defaultFile()) {
         data.hydrationGoalMl.putAll(imported.hydrationGoalMl)
         val existingIds = data.nutrition.mapTo(mutableSetOf()) { it.id }
         data.nutrition += imported.nutrition.filter { it.id !in existingIds }
+        // Carry the records' own stamps so a merged record keeps its real
+        // last-write time instead of looking freshly edited on every save.
+        data.updatedAt.putAll(imported.updatedAt)
         save(data)
         return "${imported.logs.size} günlük kayıt, ${imported.hydrationMl.size} su günü, " +
             "${imported.nutrition.size} beslenme kaydı içe aktarıldı."

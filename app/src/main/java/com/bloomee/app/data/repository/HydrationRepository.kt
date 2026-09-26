@@ -47,6 +47,8 @@ class HydrationRepository(
 
     suspend fun exportAll(): List<HydrationDayEntity> = dao.getAll()
 
+    suspend fun exportAllIncludingDeleted(): List<HydrationDayEntity> = dao.getAllIncludingDeleted()
+
     suspend fun importAll(entities: List<HydrationDayEntity>, replace: Boolean) {
         if (replace) dao.clear()
         dao.upsertAll(entities)

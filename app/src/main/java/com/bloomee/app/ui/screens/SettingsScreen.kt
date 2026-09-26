@@ -20,13 +20,17 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -70,61 +74,80 @@ fun SettingsScreen(
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = name,
-                    onValueChange = {
-                        name = it
-                        onUpdateProfile { current -> current.copy(displayName = it) }
-                    },
+                    onValueChange = { name = it },
                     label = { Text("Adın") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .commitOnUnfocus(
+                            current = { name },
+                            stored = { profile.displayName },
+                            commit = { value -> onUpdateProfile { it.copy(displayName = value.trim()) } }
+                        )
                 )
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = weight,
                     onValueChange = { value ->
                         weight = value.filter { it.isDigit() || it == '.' }
-                        weight.toDoubleOrNull()?.let { parsed ->
-                            onUpdateProfile { current -> current.copy(weightKg = parsed) }
-                        }
                     },
                     label = { Text("Kilo (kg) — su ve kalori hedefi için") },
                     singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = KeyboardType.Decimal
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .commitOnUnfocus(
+                            current = { weight },
+                            stored = { profile.weightKg?.toString().orEmpty() },
+                            commit = { value ->
+                                // Blank clears the field — the merge in prefs removes the key.
+                                onUpdateProfile { it.copy(weightKg = value.toDoubleOrNull()) }
+                            }
+                        )
                 )
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = height,
                     onValueChange = { value ->
                         height = value.filter { it.isDigit() }.take(3)
-                        height.toIntOrNull()?.let { parsed ->
-                            onUpdateProfile { current -> current.copy(heightCm = parsed) }
-                        }
                     },
                     label = { Text("Boy (cm) — kalori hedefi için") },
                     singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = KeyboardType.Number
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .commitOnUnfocus(
+                            current = { height },
+                            stored = { profile.heightCm?.toString().orEmpty() },
+                            commit = { value ->
+                                onUpdateProfile { it.copy(heightCm = value.toIntOrNull()) }
+                            }
+                        )
                 )
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = birthYear,
                     onValueChange = { value ->
                         birthYear = value.filter { it.isDigit() }.take(4)
-                        birthYear.toIntOrNull()?.let { parsed ->
-                            onUpdateProfile { current -> current.copy(birthYear = parsed) }
-                        }
                     },
                     label = { Text("Doğum yılı — kalori hedefi için") },
                     singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                         keyboardType = KeyboardType.Number
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .commitOnUnfocus(
+                            current = { birthYear },
+                            stored = { profile.birthYear?.toString().orEmpty() },
+                            commit = { value ->
+                                onUpdateProfile { it.copy(birthYear = value.toIntOrNull()) }
+                            }
+                        )
                 )
                 Spacer(Modifier.height(10.dp))
                 Text("Hareket düzeyi", style = MaterialTheme.typography.labelLarge)
@@ -255,13 +278,18 @@ fun SettingsScreen(
                 if (profile.partnerModeEnabled) {
                     OutlinedTextField(
                         value = partnerName,
-                        onValueChange = {
-                            partnerName = it
-                            onUpdateProfile { current -> current.copy(partnerName = it) }
-                        },
+                        onValueChange = { partnerName = it },
                         label = { Text("Partner adı") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .commitOnUnfocus(
+                                current = { partnerName },
+                                stored = { profile.partnerName },
+                                commit = { value ->
+                                    onUpdateProfile { it.copy(partnerName = value.trim()) }
+                                }
+                            )
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -329,14 +357,19 @@ fun SettingsScreen(
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = apiKey,
-                    onValueChange = {
-                        apiKey = it
-                        onUpdateProfile { current -> current.copy(assistantApiKey = it.trim()) }
-                    },
+                    onValueChange = { apiKey = it },
                     label = { Text("Gemini API anahtarı") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .commitOnUnfocus(
+                            current = { apiKey },
+                            stored = { profile.assistantApiKey },
+                            commit = { value ->
+                                onUpdateProfile { it.copy(assistantApiKey = value.trim()) }
+                            }
+                        )
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -346,6 +379,30 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+// Text fields write on focus loss or when leaving the screen — not on every
+// keystroke — so a DataStore edit + WorkManager reschedule doesn't fire per char.
+private fun Modifier.commitOnUnfocus(
+    current: () -> String,
+    stored: () -> String,
+    commit: (String) -> Unit
+): Modifier = composed {
+    val latestCurrent by rememberUpdatedState(current)
+    val latestStored by rememberUpdatedState(stored)
+    val latestCommit by rememberUpdatedState(commit)
+    DisposableEffect(Unit) {
+        onDispose {
+            val value = latestCurrent()
+            if (value != latestStored()) latestCommit(value)
+        }
+    }
+    onFocusChanged { focus ->
+        if (!focus.isFocused) {
+            val value = latestCurrent()
+            if (value != latestStored()) latestCommit(value)
         }
     }
 }

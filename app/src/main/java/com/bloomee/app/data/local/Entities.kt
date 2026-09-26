@@ -21,7 +21,10 @@ data class DailyLogEntity(
     val sleepHours: Double?,
     val weightKg: Double?,
     val note: String,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    // Soft-delete marker: null = live row, timestamp = tombstone. Tombstones let
+    // cloud sync propagate deletions instead of resurrecting records on merge.
+    val deletedAt: Long? = null
 ) {
     fun toDomain(): DailyLog = DailyLog(
         date = LocalDate.parse(date),
@@ -55,7 +58,8 @@ data class HydrationDayEntity(
     @PrimaryKey val date: String,
     val consumedMl: Int,
     val goalMl: Int,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null
 ) {
     fun toDomain(): HydrationDay = HydrationDay(
         date = LocalDate.parse(date),
@@ -73,7 +77,8 @@ data class NutritionEntryEntity(
     val meal: String,
     val name: String,
     val kcal: Int,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val deletedAt: Long? = null
 ) {
     fun toDomain(): NutritionEntry = NutritionEntry(
         id = id,

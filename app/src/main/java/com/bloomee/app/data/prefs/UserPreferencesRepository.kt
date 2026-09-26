@@ -108,9 +108,9 @@ class UserPreferencesRepository(private val context: Context) {
             updated = transform(current)
 
             prefs[Keys.displayName] = updated.displayName
-            updated.birthYear?.let { prefs[Keys.birthYear] = it }
-            updated.weightKg?.let { prefs[Keys.weightKg] = it }
-            updated.heightCm?.let { prefs[Keys.heightCm] = it }
+            if (updated.birthYear != null) prefs[Keys.birthYear] = updated.birthYear!! else prefs.remove(Keys.birthYear)
+            if (updated.weightKg != null) prefs[Keys.weightKg] = updated.weightKg!! else prefs.remove(Keys.weightKg)
+            if (updated.heightCm != null) prefs[Keys.heightCm] = updated.heightCm!! else prefs.remove(Keys.heightCm)
             prefs[Keys.activityLevel] = updated.activityLevel.name
             prefs[Keys.cycleLength] = updated.defaultCycleLength
             prefs[Keys.periodLength] = updated.defaultPeriodLength

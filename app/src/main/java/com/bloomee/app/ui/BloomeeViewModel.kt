@@ -176,10 +176,29 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateProfile(transform: (UserProfile) -> UserProfile) {
         viewModelScope.launch {
+            val before = container.userPreferencesRepository.profile.first()
             container.userPreferencesRepository.update(transform)
-            val profile = container.userPreferencesRepository.profile.first()
-            ReminderScheduler.schedule(getApplication(), profile)
-            container.cloudSync.setEnabled(profile.cloudSyncEnabled)
+            val after = container.userPreferencesRepository.profile.first()
+            if (before.reminderHydrationEnabled != after.reminderHydrationEnabled ||
+                before.reminderPeriodEnabled != after.reminderPeriodEnabled ||
+                before.reminderMedicationEnabled != after.reminderMedicationEnabled ||
+                before.medicationReminderHour != after.medicationReminderHour ||
+                before.defaultCycleLength != after.defaultCycleLength ||
+                before.defaultPeriodLength != after.defaultPeriodLength
+            ) {
+                ReminderScheduler.schedule(getApplication(), after)
+            }
+            if (before.cloudSyncEnabled != after.cloudSyncEnabled) {
+                container.cloudSync.setEnabled(after.cloudSyncEnabled)
+                // Pick up queued tombstones and offline writes right away.
+                if (after.cloudSyncEnabled) {
+                    container.cloudSync.syncNow(
+                        container.cycleRepository,
+                        container.hydrationRepository,
+                        container.nutritionRepository
+                    )
+                }
+            }
         }
     }
 

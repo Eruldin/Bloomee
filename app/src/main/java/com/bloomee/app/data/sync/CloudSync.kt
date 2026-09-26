@@ -9,6 +9,7 @@ import com.bloomee.app.data.local.NutritionEntryEntity
 import com.bloomee.app.data.repository.CycleRepository
 import com.bloomee.app.data.repository.HydrationRepository
 import com.bloomee.app.data.repository.NutritionRepository
+import com.bloomee.app.domain.sync.SyncMerge
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -25,8 +26,8 @@ interface CloudSync {
     suspend fun pushDailyLog(entity: DailyLogEntity)
     suspend fun pushHydrationDay(entity: HydrationDayEntity)
     suspend fun pushNutritionEntry(entity: NutritionEntryEntity)
-    suspend fun deleteDailyLog(date: String)
-    suspend fun deleteNutritionEntry(id: String)
+    suspend fun deleteDailyLog(date: String, deletedAt: Long)
+    suspend fun deleteNutritionEntry(id: String, deletedAt: Long)
     suspend fun syncNow(
         cycleRepository: CycleRepository,
         hydrationRepository: HydrationRepository,
@@ -37,6 +38,10 @@ interface CloudSync {
 /**
  * Firestore-backed sync. Stays inert until a google-services.json is added to the app module and
  * the user turns sync on, so the app is fully usable offline and without a Firebase project.
+ *
+ * Deletes are tombstones, not removals: a remote doc is kept with `deletedAt` set so stale
+ * copies on other devices can't resurrect the record on merge. Local rows behave the same
+ * way (soft delete), so deletes made while sync is off are applied on the next syncNow.
  */
 class FirebaseCloudSync(private val context: Context) : CloudSync {
 
@@ -69,7 +74,7 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
         if (!enabled) return
         runCatching {
             collection("dailyLogs")?.document(entity.date)?.set(
-                mapOf(
+                mutableMapOf<String, Any?>(
                     "date" to entity.date,
                     "flow" to entity.flow,
                     "mood" to entity.mood,
@@ -79,7 +84,7 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
                     "weightKg" to entity.weightKg,
                     "note" to entity.note,
                     "updatedAt" to entity.updatedAt
-                )
+                ).apply { entity.deletedAt?.let { put("deletedAt", it) } }
             )?.await()
         }.onFailure { report(it) }
     }
@@ -88,12 +93,12 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
         if (!enabled) return
         runCatching {
             collection("hydration")?.document(entity.date)?.set(
-                mapOf(
+                mutableMapOf<String, Any?>(
                     "date" to entity.date,
                     "consumedMl" to entity.consumedMl,
                     "goalMl" to entity.goalMl,
                     "updatedAt" to entity.updatedAt
-                )
+                ).apply { entity.deletedAt?.let { put("deletedAt", it) } }
             )?.await()
         }.onFailure { report(it) }
     }
@@ -102,28 +107,34 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
         if (!enabled) return
         runCatching {
             collection("nutrition")?.document(entity.id)?.set(
-                mapOf(
+                mutableMapOf<String, Any?>(
                     "id" to entity.id,
                     "date" to entity.date,
                     "meal" to entity.meal,
                     "name" to entity.name,
                     "kcal" to entity.kcal,
                     "updatedAt" to entity.updatedAt
-                )
+                ).apply { entity.deletedAt?.let { put("deletedAt", it) } }
             )?.await()
         }.onFailure { report(it) }
     }
 
-    override suspend fun deleteDailyLog(date: String) {
+    override suspend fun deleteDailyLog(date: String, deletedAt: Long) {
         if (!enabled) return
-        runCatching { collection("dailyLogs")?.document(date)?.delete()?.await() }
-            .onFailure { report(it) }
+        runCatching {
+            collection("dailyLogs")?.document(date)
+                ?.set(mapOf("date" to date, "updatedAt" to deletedAt, "deletedAt" to deletedAt))
+                ?.await()
+        }.onFailure { report(it) }
     }
 
-    override suspend fun deleteNutritionEntry(id: String) {
+    override suspend fun deleteNutritionEntry(id: String, deletedAt: Long) {
         if (!enabled) return
-        runCatching { collection("nutrition")?.document(id)?.delete()?.await() }
-            .onFailure { report(it) }
+        runCatching {
+            collection("nutrition")?.document(id)
+                ?.set(mapOf("id" to id, "updatedAt" to deletedAt, "deletedAt" to deletedAt))
+                ?.await()
+        }.onFailure { report(it) }
     }
 
     override suspend fun syncNow(
@@ -145,7 +156,8 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
                     sleepHours = doc.getDouble("sleepHours"),
                     weightKg = doc.getDouble("weightKg"),
                     note = doc.getString("note").orEmpty(),
-                    updatedAt = doc.getLong("updatedAt") ?: 0L
+                    updatedAt = doc.getLong("updatedAt") ?: 0L,
+                    deletedAt = doc.getLong("deletedAt")
                 )
             }
             val remoteHydration = collection("hydration")?.get()?.await()?.documents.orEmpty().mapNotNull { doc ->
@@ -154,25 +166,43 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
                     date = date,
                     consumedMl = doc.getLong("consumedMl")?.toInt() ?: 0,
                     goalMl = doc.getLong("goalMl")?.toInt() ?: 2000,
-                    updatedAt = doc.getLong("updatedAt") ?: 0L
+                    updatedAt = doc.getLong("updatedAt") ?: 0L,
+                    deletedAt = doc.getLong("deletedAt")
                 )
             }
 
-            // Last write wins per day, comparing local and remote timestamps.
-            val localLogs = cycleRepository.exportAll().associateBy { it.date }
-            val mergedLogs = (remoteLogs + localLogs.values)
-                .groupBy { it.date }
-                .map { (_, versions) -> versions.maxBy { it.updatedAt } }
+            // Last write wins per day; tombstones participate via their deletedAt stamp.
+            val localLogs = cycleRepository.exportAllIncludingDeleted().associateBy { it.date }
+            val remoteLogMap = remoteLogs.associateBy { it.date }
+            val mergedLogs = SyncMerge.winners(
+                local = localLogs.values.toList(),
+                remote = remoteLogs,
+                key = { it.date },
+                timestamp = { SyncMerge.effectiveTimestamp(it.updatedAt, it.deletedAt) }
+            )
             cycleRepository.importAll(mergedLogs, replace = false)
-            mergedLogs.filter { localLogs[it.date]?.updatedAt != it.updatedAt }.forEach { pushDailyLog(it) }
+            mergedLogs.filter { winner ->
+                val remote = remoteLogMap[winner.date]
+                remote == null ||
+                    SyncMerge.effectiveTimestamp(remote.updatedAt, remote.deletedAt) !=
+                    SyncMerge.effectiveTimestamp(winner.updatedAt, winner.deletedAt)
+            }.forEach { pushDailyLog(it) }
 
-            val localHydration = hydrationRepository.exportAll().associateBy { it.date }
-            val mergedHydration = (remoteHydration + localHydration.values)
-                .groupBy { it.date }
-                .map { (_, versions) -> versions.maxBy { it.updatedAt } }
+            val localHydration = hydrationRepository.exportAllIncludingDeleted().associateBy { it.date }
+            val remoteHydrationMap = remoteHydration.associateBy { it.date }
+            val mergedHydration = SyncMerge.winners(
+                local = localHydration.values.toList(),
+                remote = remoteHydration,
+                key = { it.date },
+                timestamp = { SyncMerge.effectiveTimestamp(it.updatedAt, it.deletedAt) }
+            )
             hydrationRepository.importAll(mergedHydration, replace = false)
-            mergedHydration.filter { localHydration[it.date]?.updatedAt != it.updatedAt }
-                .forEach { pushHydrationDay(it) }
+            mergedHydration.filter { winner ->
+                val remote = remoteHydrationMap[winner.date]
+                remote == null ||
+                    SyncMerge.effectiveTimestamp(remote.updatedAt, remote.deletedAt) !=
+                    SyncMerge.effectiveTimestamp(winner.updatedAt, winner.deletedAt)
+            }.forEach { pushHydrationDay(it) }
 
             val remoteNutrition = collection("nutrition")?.get()?.await()?.documents.orEmpty().mapNotNull { doc ->
                 val id = doc.getString("id") ?: doc.id
@@ -182,16 +212,25 @@ class FirebaseCloudSync(private val context: Context) : CloudSync {
                     meal = doc.getString("meal") ?: "SNACK",
                     name = doc.getString("name").orEmpty(),
                     kcal = doc.getLong("kcal")?.toInt() ?: 0,
-                    updatedAt = doc.getLong("updatedAt") ?: 0L
+                    updatedAt = doc.getLong("updatedAt") ?: 0L,
+                    deletedAt = doc.getLong("deletedAt")
                 )
             }
-            val localNutrition = nutritionRepository.exportAll().associateBy { it.id }
-            val mergedNutrition = (remoteNutrition + localNutrition.values)
-                .groupBy { it.id }
-                .map { (_, versions) -> versions.maxBy { it.updatedAt } }
+            val localNutrition = nutritionRepository.exportAllIncludingDeleted().associateBy { it.id }
+            val remoteNutritionMap = remoteNutrition.associateBy { it.id }
+            val mergedNutrition = SyncMerge.winners(
+                local = localNutrition.values.toList(),
+                remote = remoteNutrition,
+                key = { it.id },
+                timestamp = { SyncMerge.effectiveTimestamp(it.updatedAt, it.deletedAt) }
+            )
             nutritionRepository.importAll(mergedNutrition, replace = false)
-            mergedNutrition.filter { localNutrition[it.id]?.updatedAt != it.updatedAt }
-                .forEach { pushNutritionEntry(it) }
+            mergedNutrition.filter { winner ->
+                val remote = remoteNutritionMap[winner.id]
+                remote == null ||
+                    SyncMerge.effectiveTimestamp(remote.updatedAt, remote.deletedAt) !=
+                    SyncMerge.effectiveTimestamp(winner.updatedAt, winner.deletedAt)
+            }.forEach { pushNutritionEntry(it) }
 
             _state.value = SyncState.IDLE
         }.onFailure {
