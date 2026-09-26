@@ -32,8 +32,10 @@ android {
         applicationId = "com.bloomee.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Release CI overrides both from the git tag (-PversionName/-PversionCode);
+        // these defaults only apply to local dev builds.
+        versionCode = (providers.gradleProperty("versionCode").orNull ?: "1").toInt()
+        versionName = providers.gradleProperty("versionName").orNull ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("boolean", "CLOUD_SYNC_CONFIGURED", firebaseConfig.exists().toString())
     }

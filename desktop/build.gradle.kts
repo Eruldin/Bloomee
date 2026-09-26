@@ -21,7 +21,8 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Deb, TargetFormat.Dmg, TargetFormat.Msi)
             packageName = "Bloomee"
-            packageVersion = "1.0.0"
+            // Release CI overrides this from the git tag (-PversionName).
+            packageVersion = providers.gradleProperty("versionName").orNull ?: "1.0.0"
             description = "Bloomee — regl, su ve kalori takibi (masaüstü)"
             vendor = "Eruldin"
         }

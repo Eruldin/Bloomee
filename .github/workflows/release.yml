@@ -28,13 +28,36 @@ jobs:
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
+      # jpackage needs fakeroot to produce the Linux .deb installer.
+      - name: Install fakeroot for .deb packaging
+        run: sudo apt-get update && sudo apt-get install -y fakeroot
+
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
 
-      # Signing is optional: when the KEYSTORE_BASE64 + password repo secrets
-      # are set, release artifacts are properly signed; without them the APK
-      # falls back to the debug build (still installable) and the AAB is
-      # unsigned.
+      # Signing is a hard gate: a release built without the keystore ships
+      # unsigned/debug-signed artifacts whose signature would not match
+      # previous releases, breaking upgrades for installed users.
+      - name: Verify tag and signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=Bad tag::Release tags must look like v1.2.3 (got '$TAG')"
+            exit 1
+          fi
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error title=Missing signing secrets::Add KEYSTORE_BASE64, STORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD under Settings → Secrets → Actions (see README 'Yayınlama')."
+            exit 1
+          fi
+
+      # The tag is the single source of truth for the version: v1.2.3 builds
+      # versionName=1.2.3 and versionCode=10203 (M*10000+m*100+p), which is
+      # monotonically increasing as long as version numbers go up.
       - name: Build release artifacts
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -43,17 +66,19 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > bloomee-release.jks
-            printf 'storeFile=bloomee-release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-              "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
-            ./gradlew assembleRelease bundleRelease
-            cp app/build/outputs/apk/release/app-release.apk "bloomee-${TAG}.apk"
-          else
-            ./gradlew assembleDebug bundleRelease
-            cp app/build/outputs/apk/debug/app-debug.apk "bloomee-${TAG}.apk"
-          fi
+          VNAME="${TAG#v}"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VNAME"
+          VCODE=$((MAJOR*10000 + MINOR*100 + PATCH))
+          echo "versionName=$VNAME versionCode=$VCODE"
+          echo "$KEYSTORE_B64" | base64 -d > bloomee-release.jks
+          printf 'storeFile=bloomee-release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+          ./gradlew assembleRelease bundleRelease :wear:assembleRelease :desktop:packageDeb \
+            -PversionName="$VNAME" -PversionCode="$VCODE"
+          cp app/build/outputs/apk/release/app-release.apk "bloomee-${TAG}.apk"
           cp app/build/outputs/bundle/release/app-release.aab "bloomee-${TAG}.aab"
+          cp wear/build/outputs/apk/release/wear-release.apk "bloomee-wear-${TAG}.apk"
+          cp desktop/build/compose/binaries/main/deb/*.deb "bloomee-desktop-${TAG}.deb"
 
       # Creates the release only when absent — an existing release (e.g. one
       # whose assets were uploaded manually) is left untouched.
@@ -65,6 +90,8 @@ jobs:
           if gh release view "$TAG" > /dev/null 2>&1; then
             echo "Release $TAG already exists — leaving assets unchanged"
           else
-            gh release create "$TAG" "bloomee-${TAG}.apk" "bloomee-${TAG}.aab" \
+            gh release create "$TAG" \
+              "bloomee-${TAG}.apk" "bloomee-${TAG}.aab" \
+              "bloomee-wear-${TAG}.apk" "bloomee-desktop-${TAG}.deb" \
               --title "Bloomee ${TAG}" --generate-notes
           fi
