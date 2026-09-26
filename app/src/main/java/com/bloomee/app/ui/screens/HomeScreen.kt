@@ -46,6 +46,7 @@ import com.bloomee.app.ui.components.LabeledValue
 import com.bloomee.app.ui.components.SectionTitle
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private val dayFormatter = DateTimeFormatter.ofPattern("d MMMM", Locale("tr"))
 
@@ -108,8 +109,10 @@ fun HomeScreen(
 private fun CycleHeroCard(state: BloomeeUiState, onLogToday: () -> Unit) {
     val stats = state.stats
     val headline = when {
-        !stats.hasEnoughData -> "Takibe başlayalım"
+        stats.phase == CyclePhase.UNKNOWN -> "Takibe başlayalım"
         stats.isLate -> "Regl ${-(stats.daysToNextPeriod ?: 0)} gün gecikti"
+        stats.daysToNextPeriod != null && stats.daysToNextPeriod!! < 0 ->
+            "Yeni reglini kaydedince tahmin netleşir"
         stats.daysToNextPeriod == 0 -> "Bugün regl beklentisi"
         stats.daysToNextPeriod != null -> "Regle ${stats.daysToNextPeriod} gün"
         else -> stats.phase.label
@@ -132,8 +135,14 @@ private fun CycleHeroCard(state: BloomeeUiState, onLogToday: () -> Unit) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 stats.predictedNextPeriodStart?.let {
+                    val spread = stats.cycleLengthVariation.roundToInt()
+                    val uncertainty = when {
+                        !stats.hasEnoughData -> " · tek kayda dayalı"
+                        spread >= 1 -> " ±$spread gün"
+                        else -> ""
+                    }
                     Text(
-                        "Tahmini başlangıç: ${it.format(dayFormatter)}",
+                        "Tahmini başlangıç: ${it.format(dayFormatter)}$uncertainty",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -149,9 +158,17 @@ private fun CycleHeroCard(state: BloomeeUiState, onLogToday: () -> Unit) {
             LabeledValue("Doğurganlık", stats.fertility.label)
         }
 
-        if (stats.phase != CyclePhase.UNKNOWN && stats.isIrregular) {
+        val notes = buildList {
+            if (stats.phase != CyclePhase.UNKNOWN && !stats.hasEnoughData) {
+                add("Tahmin tek dönem kaydına dayanıyor; düzenli kayıtla hassaslaşır")
+            }
+            if (stats.isIrregular) {
+                add("Döngün değişken, tahmin aralığı geniş")
+            }
+        }
+        notes.forEach { note ->
             Spacer(Modifier.height(10.dp))
-            AssistChip(onClick = {}, label = { Text("Döngün değişken, tahmin aralığı geniş") })
+            AssistChip(onClick = {}, label = { Text(note) })
         }
 
         Spacer(Modifier.height(14.dp))

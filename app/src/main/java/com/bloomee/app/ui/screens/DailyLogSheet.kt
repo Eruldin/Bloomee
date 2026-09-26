@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +42,7 @@ private val sheetDateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy, EEEE"
 fun DailyLogSheet(
     initial: DailyLog,
     onSave: (DailyLog) -> Unit,
+    onMarkPeriod: (log: DailyLog, totalDays: Int) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -73,6 +75,35 @@ fun DailyLogSheet(
                     onClick = { flow = level },
                     label = { Text(level.label) }
                 )
+            }
+        }
+
+        if (flow.isBleeding) {
+            Text(
+                "Regl bu günden itibaren kaç gün sürüyor? (tek seferde işaretle)",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(2, 3, 5, 7).forEach { days ->
+                    AssistChip(
+                        onClick = {
+                            onMarkPeriod(
+                                initial.copy(
+                                    flow = flow,
+                                    mood = mood,
+                                    symptoms = symptoms,
+                                    painLevel = pain.toInt(),
+                                    sleepHours = sleep.toDoubleOrNull(),
+                                    weightKg = weight.toDoubleOrNull(),
+                                    note = note.trim()
+                                ),
+                                days
+                            )
+                        },
+                        label = { Text("$days gün") }
+                    )
+                }
             }
         }
 

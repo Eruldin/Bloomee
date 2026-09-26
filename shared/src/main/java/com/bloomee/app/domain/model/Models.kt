@@ -59,10 +59,17 @@ enum class CyclePhase(val label: String) {
 }
 
 enum class FertilityLevel(val label: String) {
+    UNKNOWN("Bilinmiyor"),
     LOW("Düşük"),
     MEDIUM("Orta"),
     HIGH("Yüksek"),
     PEAK("En yüksek")
+}
+
+/** Consistent entry bounds for cycle defaults across onboarding and settings. */
+object CycleBounds {
+    val CYCLE_LENGTH_RANGE = 21..45
+    val PERIOD_LENGTH_RANGE = 2..10
 }
 
 enum class ActivityLevel(val label: String, val hydrationFactor: Double, val calorieFactor: Double) {

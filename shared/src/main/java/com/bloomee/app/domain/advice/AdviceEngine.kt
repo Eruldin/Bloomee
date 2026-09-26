@@ -3,6 +3,7 @@ package com.bloomee.app.domain.advice
 import com.bloomee.app.domain.model.CyclePhase
 import com.bloomee.app.domain.model.CycleStats
 import com.bloomee.app.domain.model.DailyLog
+import com.bloomee.app.domain.model.FlowLevel
 import com.bloomee.app.domain.model.HydrationDay
 import com.bloomee.app.domain.model.Symptom
 
@@ -102,6 +103,16 @@ object AdviceEngine {
                 title = "Döngün değişken",
                 body = "Son döngülerinde ${stats.cycleLengthVariation.toInt()} güne varan sapma var. " +
                     "Tahminler bu yüzden geniş bir aralıkta; kayıt tutmaya devam ettikçe hassaslaşacak.",
+                category = AdviceCategory.ALERT
+            )
+        }
+        if (todayLog?.flow == FlowLevel.HEAVY) {
+            cards += AdviceCard(
+                id = "heavy_flow",
+                title = "Yoğun kanama",
+                body = "Yoğun regl günlerinde su ve demir alımı önemli. Saatte birden fazla " +
+                    "tampon/ped gereksinimi birkaç saat sürerse veya bu düzen her döngüde " +
+                    "tekrarlanırsa bir hekime danışmak iyi olur.",
                 category = AdviceCategory.ALERT
             )
         }

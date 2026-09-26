@@ -23,12 +23,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,15 +52,29 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.bloomee.app.domain.advice.AdviceEngine
 import com.bloomee.app.domain.model.ActivityLevel
+import com.bloomee.app.domain.model.CycleBounds
 import com.bloomee.app.domain.model.UserProfile
 import com.bloomee.app.notification.rememberNotificationPermissionRequest
 import com.bloomee.app.ui.components.BloomeeCard
 import com.bloomee.app.ui.theme.ThemePalette
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
-@OptIn(ExperimentalLayoutApi::class)
+private val lastPeriodFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("tr"))
+
+@OptIn(ExperimentalMaterial3Api::class)
+private val pastDatesOnly = object : SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+        utcTimeMillis <= System.currentTimeMillis()
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
     onFinish: (profile: (UserProfile) -> UserProfile, lastPeriodStart: LocalDate?, periodLength: Int) -> Unit,
@@ -70,7 +91,8 @@ fun OnboardingScreen(
     var activity by remember { mutableStateOf(ActivityLevel.MODERATE) }
     var cycleLength by remember { mutableStateOf(28) }
     var periodLength by remember { mutableStateOf(5) }
-    var daysAgo by remember { mutableStateOf("") }
+    var lastPeriodDate by remember { mutableStateOf<LocalDate?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val requestNotificationPermission = rememberNotificationPermissionRequest()
 
     Column(
@@ -182,39 +204,63 @@ fun OnboardingScreen(
         }
 
         BloomeeCard {
-            Text("Son reglin kaç gün önce başladı?", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = daysAgo,
-                onValueChange = { value -> daysAgo = value.filter { it.isDigit() }.take(2) },
-                label = { Text("Gün") },
-                singleLine = true,
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    keyboardType = KeyboardType.Number
-                ),
-                modifier = Modifier.fillMaxWidth()
+            Text("Son reglin ne zaman başladı?", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Tahminler buradan hesaplanır — hatırlamıyorsan boş bırakabilirsin.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(10.dp))
-            Text("Ortalama döngü uzunluğu: $cycleLength gün", style = MaterialTheme.typography.labelLarge)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(25, 26, 27, 28, 29, 30, 31, 32).forEach { value ->
-                    FilterChip(
-                        selected = cycleLength == value,
-                        onClick = { cycleLength = value },
-                        label = { Text("$value") }
-                    )
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = { showDatePicker = true }) {
+                    Text(lastPeriodDate?.format(lastPeriodFormatter) ?: "Tarih seç")
+                }
+                if (lastPeriodDate != null) {
+                    TextButton(onClick = { lastPeriodDate = null }) { Text("Temizle") }
                 }
             }
             Spacer(Modifier.height(10.dp))
+            Text(
+                "Ortalama döngü uzunluğu: $cycleLength gün",
+                style = MaterialTheme.typography.labelLarge
+            )
+            Slider(
+                value = cycleLength.toFloat(),
+                onValueChange = { cycleLength = it.roundToInt() },
+                valueRange = CycleBounds.CYCLE_LENGTH_RANGE.first.toFloat()..
+                    CycleBounds.CYCLE_LENGTH_RANGE.last.toFloat(),
+                steps = CycleBounds.CYCLE_LENGTH_RANGE.last - CycleBounds.CYCLE_LENGTH_RANGE.first - 1
+            )
             Text("Regl süresi: $periodLength gün", style = MaterialTheme.typography.labelLarge)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                (3..8).forEach { value ->
-                    FilterChip(
-                        selected = periodLength == value,
-                        onClick = { periodLength = value },
-                        label = { Text("$value") }
-                    )
+            Slider(
+                value = periodLength.toFloat(),
+                onValueChange = { periodLength = it.roundToInt() },
+                valueRange = CycleBounds.PERIOD_LENGTH_RANGE.first.toFloat()..
+                    CycleBounds.PERIOD_LENGTH_RANGE.last.toFloat(),
+                steps = CycleBounds.PERIOD_LENGTH_RANGE.last - CycleBounds.PERIOD_LENGTH_RANGE.first - 1
+            )
+        }
+
+        if (showDatePicker) {
+            val pickerState = rememberDatePickerState(selectableDates = pastDatesOnly)
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            lastPeriodDate = pickerState.selectedDateMillis?.let {
+                                Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()
+                            }
+                            showDatePicker = false
+                        }
+                    ) { Text("Tamam") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) { Text("Vazgeç") }
                 }
+            ) {
+                DatePicker(state = pickerState)
             }
         }
 
@@ -251,7 +297,6 @@ fun OnboardingScreen(
         Button(
             onClick = {
                 if (remindersEnabled) requestNotificationPermission()
-                val start = daysAgo.toIntOrNull()?.let { LocalDate.now().minusDays(it.toLong()) }
                 onFinish(
                     { current ->
                         current.copy(
@@ -265,7 +310,7 @@ fun OnboardingScreen(
                             onboardingCompleted = true
                         )
                     },
-                    start,
+                    lastPeriodDate,
                     periodLength
                 )
             },

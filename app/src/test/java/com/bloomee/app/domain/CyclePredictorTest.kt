@@ -2,11 +2,14 @@ package com.bloomee.app.domain
 
 import com.bloomee.app.domain.model.CyclePhase
 import com.bloomee.app.domain.model.DailyLog
+import com.bloomee.app.domain.model.FertilityLevel
 import com.bloomee.app.domain.model.FlowLevel
 import com.bloomee.app.domain.prediction.CyclePredictor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -97,7 +100,34 @@ class CyclePredictorTest {
 
         assertFalse(stats.hasEnoughData)
         assertEquals(CyclePhase.UNKNOWN, stats.phase)
+        assertEquals(FertilityLevel.UNKNOWN, stats.fertility)
         assertEquals(28, stats.averageCycleLength)
+    }
+
+    @Test
+    fun `a single logged period does not claim fertility or lateness`() {
+        val logs = period(LocalDate.of(2025, 1, 1), days = 5)
+
+        val stats = CyclePredictor.calculate(logs, today = LocalDate.of(2025, 3, 10))
+
+        // The predicted date exists (defaults based) but is 40 days overdue; with no
+        // completed cycle this is stale input, not evidence of a late period.
+        assertFalse(stats.hasEnoughData)
+        assertEquals(FertilityLevel.UNKNOWN, stats.fertility)
+        assertNull(stats.fertileWindow)
+        assertFalse(stats.isLate)
+        assertTrue((stats.daysToNextPeriod ?: 0) < 0)
+    }
+
+    @Test
+    fun `fertility and fertile window appear once a cycle is completed`() {
+        val logs = period(LocalDate.of(2025, 1, 1)) + period(LocalDate.of(2025, 1, 29))
+
+        val stats = CyclePredictor.calculate(logs, today = LocalDate.of(2025, 2, 10))
+
+        assertTrue(stats.hasEnoughData)
+        assertNotNull(stats.fertileWindow)
+        assertNotEquals(FertilityLevel.UNKNOWN, stats.fertility)
     }
 
     @Test

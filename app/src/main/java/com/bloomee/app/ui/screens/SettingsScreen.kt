@@ -32,6 +32,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.bloomee.app.data.sync.SyncState
 import com.bloomee.app.domain.model.ActivityLevel
+import com.bloomee.app.domain.model.CycleBounds
 import com.bloomee.app.domain.model.ThemeMode
 import com.bloomee.app.domain.model.UserProfile
 import com.bloomee.app.notification.rememberNotificationPermissionRequest
@@ -195,20 +196,40 @@ fun SettingsScreen(
                     label = "Döngü uzunluğu",
                     value = "${profile.defaultCycleLength} gün",
                     onDecrease = {
-                        onUpdateProfile { it.copy(defaultCycleLength = (it.defaultCycleLength - 1).coerceAtLeast(21)) }
+                        onUpdateProfile {
+                            it.copy(
+                                defaultCycleLength = (it.defaultCycleLength - 1)
+                                    .coerceAtLeast(CycleBounds.CYCLE_LENGTH_RANGE.first)
+                            )
+                        }
                     },
                     onIncrease = {
-                        onUpdateProfile { it.copy(defaultCycleLength = (it.defaultCycleLength + 1).coerceAtMost(45)) }
+                        onUpdateProfile {
+                            it.copy(
+                                defaultCycleLength = (it.defaultCycleLength + 1)
+                                    .coerceAtMost(CycleBounds.CYCLE_LENGTH_RANGE.last)
+                            )
+                        }
                     }
                 )
                 StepperRow(
                     label = "Regl süresi",
                     value = "${profile.defaultPeriodLength} gün",
                     onDecrease = {
-                        onUpdateProfile { it.copy(defaultPeriodLength = (it.defaultPeriodLength - 1).coerceAtLeast(2)) }
+                        onUpdateProfile {
+                            it.copy(
+                                defaultPeriodLength = (it.defaultPeriodLength - 1)
+                                    .coerceAtLeast(CycleBounds.PERIOD_LENGTH_RANGE.first)
+                            )
+                        }
                     },
                     onIncrease = {
-                        onUpdateProfile { it.copy(defaultPeriodLength = (it.defaultPeriodLength + 1).coerceAtMost(10)) }
+                        onUpdateProfile {
+                            it.copy(
+                                defaultPeriodLength = (it.defaultPeriodLength + 1)
+                                    .coerceAtMost(CycleBounds.PERIOD_LENGTH_RANGE.last)
+                            )
+                        }
                     }
                 )
             }

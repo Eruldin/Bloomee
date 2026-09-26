@@ -223,6 +223,15 @@ fun BloomeeApp(viewModel: BloomeeViewModel) {
                     viewModel.saveLog(it)
                     editingLog = null
                 },
+                onMarkPeriod = { saved, totalDays ->
+                    viewModel.saveLog(saved)
+                    viewModel.markPeriodRange(
+                        saved.date.plusDays(1),
+                        saved.date.plusDays(totalDays - 1L),
+                        saved.flow
+                    )
+                    editingLog = null
+                },
                 onDismiss = { editingLog = null }
             )
         }

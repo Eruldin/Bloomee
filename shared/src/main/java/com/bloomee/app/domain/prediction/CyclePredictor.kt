@@ -57,7 +57,7 @@ object CyclePredictor {
                 phaseProgress = 0f,
                 daysToNextPeriod = null,
                 predictedNextPeriodStart = null,
-                fertility = FertilityLevel.LOW,
+                fertility = FertilityLevel.UNKNOWN,
                 fertileWindow = null,
                 averageCycleLength = averageCycleLength,
                 averagePeriodLength = averagePeriodLength,
@@ -73,9 +73,16 @@ object CyclePredictor {
         val cycleDay = (daysSinceStart + 1).coerceAtLeast(1)
         val predictedNextStart = lastPeriodStart.plusDays(averageCycleLength.toLong())
         val daysToNextPeriod = ChronoUnit.DAYS.between(today, predictedNextStart).toInt()
+        val hasCompletedCycle = cycleLengths.isNotEmpty()
+
         val ovulationDay = predictedNextStart.minusDays(LUTEAL_PHASE_LENGTH.toLong())
         val padding = if (stdDev > 3) stdDev.roundToInt().coerceAtMost(4).toLong() else 0L
-        val fertileWindow = ovulationDay.minusDays(5 + padding)..ovulationDay.plusDays(1 + padding)
+        // A fertile window needs at least one completed cycle to be non-speculative.
+        val fertileWindow = if (hasCompletedCycle) {
+            ovulationDay.minusDays(5 + padding)..ovulationDay.plusDays(1 + padding)
+        } else {
+            null
+        }
 
         val currentPeriod = periods.last()
         val stillBleeding = currentPeriod.any { !it.isBefore(today.minusDays(1)) }
@@ -88,8 +95,9 @@ object CyclePredictor {
         }
 
         val fertility = when {
+            !hasCompletedCycle -> FertilityLevel.UNKNOWN
             today == ovulationDay -> FertilityLevel.PEAK
-            today in fertileWindow -> FertilityLevel.HIGH
+            fertileWindow?.contains(today) == true -> FertilityLevel.HIGH
             abs(ChronoUnit.DAYS.between(today, ovulationDay)) <= 8 -> FertilityLevel.MEDIUM
             else -> FertilityLevel.LOW
         }
@@ -106,7 +114,9 @@ object CyclePredictor {
             averagePeriodLength = averagePeriodLength,
             cycleLengthVariation = stdDev,
             isIrregular = stdDev >= IRREGULAR_STD_DEV_THRESHOLD,
-            isLate = daysToNextPeriod < -LATE_TOLERANCE_DAYS,
+            // "Late" is only meaningful once a real cycle length exists; with a single
+            // logged period the difference to the default isn't evidence of lateness.
+            isLate = hasCompletedCycle && daysToNextPeriod < -LATE_TOLERANCE_DAYS,
             recordedCycles = cycleLengths.size,
             hasEnoughData = cycleLengths.isNotEmpty()
         )

@@ -15,6 +15,7 @@ import com.bloomee.app.domain.model.CyclePhase
 import com.bloomee.app.domain.model.CycleStats
 import com.bloomee.app.domain.model.DailyLog
 import com.bloomee.app.domain.model.FertilityLevel
+import com.bloomee.app.domain.model.FlowLevel
 import com.bloomee.app.domain.model.HydrationDay
 import com.bloomee.app.domain.model.Meal
 import com.bloomee.app.domain.model.NutritionDay
@@ -55,7 +56,7 @@ data class BloomeeUiState(
             phaseProgress = 0f,
             daysToNextPeriod = null,
             predictedNextPeriodStart = null,
-            fertility = FertilityLevel.LOW,
+            fertility = FertilityLevel.UNKNOWN,
             fertileWindow = null,
             averageCycleLength = 28,
             averagePeriodLength = 5,
@@ -141,6 +142,12 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
 
     fun saveLog(log: DailyLog) {
         viewModelScope.launch { container.cycleRepository.save(log) }
+    }
+
+    fun markPeriodRange(start: LocalDate, endInclusive: LocalDate, flow: FlowLevel) {
+        viewModelScope.launch {
+            container.cycleRepository.markPeriodRange(start, endInclusive, flow.name)
+        }
     }
 
     fun addWater(amountMl: Int) {

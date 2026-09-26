@@ -202,16 +202,18 @@ private fun DayCell(
     onClick: () -> Unit
 ) {
     val logged = log?.flow?.isBleeding == true
+    // A day can be both predicted-period and fertile: fertile fills, prediction rings.
     val background = when {
         logged -> flowColor(log.flow)
-        isPredicted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
         isFertile -> FertilePeak.copy(alpha = 0.22f)
+        isPredicted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
         else -> Color.Transparent
     }
     val description = buildString {
         append(date.format(fullDateFormatter))
         when {
             logged -> append(", kanama: ${log!!.flow.label}")
+            isPredicted && isFertile -> append(", tahmini regl günü ve doğurgan pencere")
             isPredicted -> append(", tahmini regl günü")
             isFertile -> append(", doğurgan pencere")
         }
@@ -223,6 +225,17 @@ private fun DayCell(
             .size(44.dp)
             .clip(CircleShape)
             .background(background)
+            .then(
+                if (isPredicted && !logged) {
+                    Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                        CircleShape
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .then(
                 if (isToday) {
                     Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
