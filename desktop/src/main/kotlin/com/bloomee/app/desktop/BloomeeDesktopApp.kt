@@ -96,6 +96,33 @@ private class DesktopAppState(private val store: BloomeeStore = BloomeeStore()) 
         version++
     }
 
+    // Mutators stamp the changed record's updatedAt so save() preserves
+    // last-write times for merge instead of stamping every record "now".
+    fun upsertLog(date: LocalDate, log: DailyLog) {
+        data.logs[date] = log
+        data.updatedAt[DesktopData.logKey(date)] = System.currentTimeMillis()
+        touch()
+    }
+
+    fun upsertHydration(date: LocalDate, consumedMl: Int, goalMl: Int) {
+        data.hydrationMl[date] = consumedMl
+        data.hydrationGoalMl[date] = goalMl
+        data.updatedAt[DesktopData.hydrationKey(date)] = System.currentTimeMillis()
+        touch()
+    }
+
+    fun addNutrition(entry: NutritionEntry) {
+        data.nutrition += entry
+        data.updatedAt[DesktopData.nutritionKey(entry.id)] = System.currentTimeMillis()
+        touch()
+    }
+
+    fun removeNutrition(id: String) {
+        data.nutrition.removeAll { it.id == id }
+        data.updatedAt.remove(DesktopData.nutritionKey(id))
+        touch()
+    }
+
     fun importBackup(file: File) {
         statusMessage = store.importBackup(file, data)
         version++
@@ -265,8 +292,7 @@ private fun CycleCard(
                     FilterChip(
                         selected = (todayLog?.flow ?: FlowLevel.NONE) == flow,
                         onClick = {
-                            state.data.logs[today] = (todayLog ?: DailyLog(today)).copy(flow = flow)
-                            state.touch()
+                            state.upsertLog(today, (todayLog ?: DailyLog(today)).copy(flow = flow))
                         },
                         label = { Text(flow.label) }
                     )
@@ -296,14 +322,11 @@ private fun WaterCard(day: HydrationDay, state: DesktopAppState, today: LocalDat
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 HydrationCalculator.quickAddOptionsMl.forEach { ml ->
                     OutlinedButton(onClick = {
-                        state.data.hydrationMl[today] = day.consumedMl + ml
-                        state.data.hydrationGoalMl[today] = day.goalMl
-                        state.touch()
+                        state.upsertHydration(today, day.consumedMl + ml, day.goalMl)
                     }) { Text("+$ml ml") }
                 }
                 TextButton(onClick = {
-                    state.data.hydrationMl[today] = 0
-                    state.touch()
+                    state.upsertHydration(today, 0, day.goalMl)
                 }) { Text("Sıfırla") }
             }
         }
@@ -342,8 +365,7 @@ private fun CalorieCard(day: NutritionDay, state: DesktopAppState, today: LocalD
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("${entry.kcal} kcal", style = MaterialTheme.typography.bodyMedium)
                         IconButton(onClick = {
-                            state.data.nutrition.removeAll { it.id == entry.id }
-                            state.touch()
+                            state.removeNutrition(entry.id)
                         }) { Icon(Icons.Filled.Delete, "Sil", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
@@ -380,16 +402,17 @@ private fun CalorieCard(day: NutritionDay, state: DesktopAppState, today: LocalD
                     onClick = {
                         val kcal = newKcal.toIntOrNull() ?: return@Button
                         if (newName.isBlank() || kcal <= 0) return@Button
-                        state.data.nutrition += NutritionEntry(
-                            id = UUID.randomUUID().toString(),
-                            date = today,
-                            meal = newMeal,
-                            name = newName.trim(),
-                            kcal = kcal
+                        state.addNutrition(
+                            NutritionEntry(
+                                id = UUID.randomUUID().toString(),
+                                date = today,
+                                meal = newMeal,
+                                name = newName.trim(),
+                                kcal = kcal
+                            )
                         )
                         newName = ""
                         newKcal = ""
-                        state.touch()
                     },
                     enabled = newName.isNotBlank() && (newKcal.toIntOrNull() ?: 0) > 0
                 ) {

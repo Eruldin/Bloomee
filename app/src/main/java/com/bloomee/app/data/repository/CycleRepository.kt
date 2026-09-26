@@ -21,8 +21,7 @@ class CycleRepository(
 
     suspend fun save(log: DailyLog) {
         if (log.isEmpty) {
-            dao.delete(log.date.toString())
-            cloudSync.deleteDailyLog(log.date.toString())
+            delete(log.date)
             return
         }
         val entity = DailyLogEntity.fromDomain(log)
@@ -30,9 +29,12 @@ class CycleRepository(
         cloudSync.pushDailyLog(entity)
     }
 
+    // Deletes are soft: the row becomes a tombstone so a later merge cannot
+    // resurrect the record from a stale remote copy (or push it back).
     suspend fun delete(date: LocalDate) {
-        dao.delete(date.toString())
-        cloudSync.deleteDailyLog(date.toString())
+        val deletedAt = System.currentTimeMillis()
+        dao.softDelete(date.toString(), deletedAt)
+        cloudSync.deleteDailyLog(date.toString(), deletedAt)
     }
 
     suspend fun markPeriodRange(start: LocalDate, endInclusive: LocalDate, flowLevelName: String) {
@@ -45,6 +47,8 @@ class CycleRepository(
     }
 
     suspend fun exportAll(): List<DailyLogEntity> = dao.getAll()
+
+    suspend fun exportAllIncludingDeleted(): List<DailyLogEntity> = dao.getAllIncludingDeleted()
 
     suspend fun importAll(entities: List<DailyLogEntity>, replace: Boolean) {
         if (replace) dao.clear()

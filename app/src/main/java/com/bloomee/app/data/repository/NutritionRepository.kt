@@ -23,11 +23,14 @@ class NutritionRepository(
     }
 
     suspend fun delete(id: String) {
-        dao.delete(id)
-        cloudSync.deleteNutritionEntry(id)
+        val deletedAt = System.currentTimeMillis()
+        dao.softDelete(id, deletedAt)
+        cloudSync.deleteNutritionEntry(id, deletedAt)
     }
 
     suspend fun exportAll(): List<NutritionEntryEntity> = dao.getAll()
+
+    suspend fun exportAllIncludingDeleted(): List<NutritionEntryEntity> = dao.getAllIncludingDeleted()
 
     suspend fun importAll(entities: List<NutritionEntryEntity>, replace: Boolean) {
         if (replace) dao.clear()
