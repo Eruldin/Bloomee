@@ -1,5 +1,6 @@
 package com.bloomee.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -38,6 +40,7 @@ import com.bloomee.app.data.sync.SyncState
 import com.bloomee.app.domain.model.ActivityLevel
 import com.bloomee.app.domain.model.ThemeMode
 import com.bloomee.app.domain.model.UserProfile
+import com.bloomee.app.notification.notificationsEnabled
 import com.bloomee.app.notification.rememberNotificationPermissionRequest
 import com.bloomee.app.ui.BloomeeUiState
 import com.bloomee.app.ui.components.BloomeeCard
@@ -61,7 +64,15 @@ fun SettingsScreen(
     var birthYear by remember(profile.birthYear) { mutableStateOf(profile.birthYear?.toString().orEmpty()) }
     var apiKey by remember(profile.assistantApiKey) { mutableStateOf(profile.assistantApiKey) }
     var partnerName by remember(profile.partnerName) { mutableStateOf(profile.partnerName) }
-    val requestNotificationPermission = rememberNotificationPermissionRequest()
+    val context = LocalContext.current
+    val requestNotificationPermission = rememberNotificationPermissionRequest {
+        Toast.makeText(
+            context,
+            "Bildirim izni verilmedi — hatırlatıcılar çalışmaz. Telefon ayarlarından izin verebilirsin.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+    val systemNotificationsOn = remember { notificationsEnabled(context) }
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
@@ -253,6 +264,15 @@ fun SettingsScreen(
                     onUpdateProfile { it.copy(reminderMedicationEnabled = enabled) }
                     if (enabled) requestNotificationPermission()
                 }
+                if (!systemNotificationsOn) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Bildirim izni sistem düzeyinde kapalı; hatırlatıcılar çalışmaz. " +
+                            "Telefon ayarlarından Bloomee bildirimlerine izin ver.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
                 if (profile.reminderMedicationEnabled) {
                     StepperRow(
                         label = "İlaç saati",
@@ -308,7 +328,7 @@ fun SettingsScreen(
                 val syncLabel = when (state.syncState) {
                     SyncState.UNCONFIGURED -> "Firebase yapılandırması (google-services.json) eklenmedi."
                     SyncState.DISABLED -> "Kapalı. Verin yalnızca bu cihazda."
-                    SyncState.IDLE -> "Açık. Kayıtların hesabına şifreli bağlantıyla yedekleniyor."
+                    SyncState.IDLE -> "Açık. Kayıtların şifreli bağlantıyla yedekleniyor — ancak hesap değil bu kuruluma bağlı olduğu için uygulama kaldırılırsa yedek geri getirilemez."
                     SyncState.SYNCING -> "Eşitleniyor..."
                     SyncState.ERROR -> "Son eşitleme başarısız oldu."
                 }

@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        storage = WearStorage(this)
+        storage = WearStorage(this).apply { prune() }
         setContent {
             WearHome(storage)
         }
@@ -176,6 +176,16 @@ private fun WearHome(storage: WearStorage) {
                         )
                     },
                     colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                Text(
+                    "Kayıtlar saatte kalır; telefonla senkron yok.",
+                    style = MaterialTheme.typography.caption2,
+                    color = MaterialTheme.colors.onBackground,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

@@ -50,7 +50,35 @@ class WearStorage(context: Context) {
     fun flowOn(date: LocalDate): FlowLevel =
         logs().firstOrNull { it.date == date }?.flow ?: FlowLevel.NONE
 
+    /**
+     * SharedPreferences grow unboundedly otherwise — water/kcal keys and flow
+     * entries are glanceable data, not history. Keeps recent days and drops
+     * anything older than the retention windows.
+     */
+    fun prune() {
+        val today = LocalDate.now()
+        val editor = prefs.edit()
+        prefs.all.keys
+            .filter { it.startsWith(KEY_WATER) || it.startsWith(KEY_KCAL) }
+            .forEach { key ->
+                val date = runCatching { LocalDate.parse(key.substringAfterLast('_')) }.getOrNull()
+                if (date == null || date.isBefore(today.minusDays(DAY_TOTAL_RETENTION_DAYS))) {
+                    editor.remove(key)
+                }
+            }
+
+        val entries = prefs.getStringSet(KEY_LOGS, emptySet()).orEmpty()
+        val kept = entries.filterTo(mutableSetOf()) { entry ->
+            val date = runCatching { LocalDate.parse(entry.substringBefore('|')) }.getOrNull()
+            date == null || !date.isBefore(today.minusDays(FLOW_RETENTION_DAYS))
+        }
+        if (kept.size != entries.size) editor.putStringSet(KEY_LOGS, kept)
+        editor.apply()
+    }
+
     private companion object {
+        const val DAY_TOTAL_RETENTION_DAYS = 30L
+        const val FLOW_RETENTION_DAYS = 366L
         const val KEY_THEME = "theme_name"
         const val KEY_LOGS = "flow_logs"
         const val KEY_WATER = "water_ml_"
