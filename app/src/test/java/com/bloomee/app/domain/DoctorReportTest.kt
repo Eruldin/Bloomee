@@ -78,7 +78,7 @@ class DoctorReportTest {
         assertTrue(report.contains("Kramp: 2 gün"))
         assertTrue(report.contains("Baş ağrısı: 1 gün"))
         assertTrue(report.contains("Yorgun: 2 gün"))
-        assertTrue(report.contains("2 gün kaydedildi, ortalama 5,0/10"))
+        assertTrue(report.contains("2 gün kaydedildi, ortalama 5,0/5"))
         assertTrue(report.contains("Ortalama uyku: 7,0 saat"))
         assertTrue(report.contains("Ortalama su: 1750 ml/gün"))
         assertTrue(report.contains("hedefe ulaşılan gün: 1/2"))

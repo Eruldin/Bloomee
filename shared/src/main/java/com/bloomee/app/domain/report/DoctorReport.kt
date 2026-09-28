@@ -133,7 +133,7 @@ object DoctorReport {
             if (painDays.isNotEmpty()) {
                 text.appendLine(
                     "Ağrı: ${painDays.size} gün kaydedildi, " +
-                        "ortalama ${dec(painDays.map { it.painLevel }.average())}/10"
+                        "ortalama ${dec(painDays.map { it.painLevel }.average())}/5"
                 )
                 wroteAny = true
             }
