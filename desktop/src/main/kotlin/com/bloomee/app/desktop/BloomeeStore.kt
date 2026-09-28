@@ -309,6 +309,7 @@ class BloomeeStore(private val file: File = defaultFile()) {
                 }
                 "nut" -> data.nutrition.removeAll { it.id == target }
             }
+            data.deletedKeys += key
             adopt(key)
             deleted++
         }
