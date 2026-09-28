@@ -17,4 +17,22 @@ object SyncMerge {
         key: (T) -> String,
         timestamp: (T) -> Long
     ): List<T> = (local + remote).groupBy(key).map { (_, versions) -> versions.maxBy(timestamp) }
+
+    /**
+     * Records from [incoming] that should be applied over [local]: an incoming
+     * record applies only when no local version exists or its timestamp is
+     * strictly newer. Ties keep the local version; [skipped] counts losers.
+     */
+    data class ApplyDecision<T>(val apply: List<T>, val skipped: Int)
+
+    fun <T> applySet(
+        local: List<T>,
+        incoming: List<T>,
+        key: (T) -> String,
+        timestamp: (T) -> Long
+    ): ApplyDecision<T> {
+        val localStamp = local.associate { key(it) to timestamp(it) }
+        val apply = incoming.filter { item -> (localStamp[key(item)] ?: -1L) < timestamp(item) }
+        return ApplyDecision(apply, incoming.size - apply.size)
+    }
 }

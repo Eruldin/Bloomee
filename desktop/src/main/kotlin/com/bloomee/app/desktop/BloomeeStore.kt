@@ -46,6 +46,11 @@ class DesktopData {
      */
     val updatedAt = mutableMapOf<String, Long>()
 
+    /** Keys whose record was tombstoned in the source file (deletedAt > 0).
+     *  The record itself is not loaded; only its deletion stamp survives so a
+     *  merge can carry the delete instead of resurrecting stale data. */
+    val deletedKeys = mutableSetOf<String>()
+
     fun stampFor(key: String): Long = updatedAt.getOrPut(key) { System.currentTimeMillis() }
 
     companion object {
@@ -66,6 +71,13 @@ class BloomeeStore(private val file: File = defaultFile()) {
             root.optJSONArray("dailyLogs")?.forEachObject { item ->
                 val date = runCatching { LocalDate.parse(item.getString("date")) }.getOrNull()
                     ?: return@forEachObject
+                val key = DesktopData.logKey(date)
+                val deletedAt = item.optLong("deletedAt").takeIf { it > 0 }
+                if (deletedAt != null) {
+                    data.deletedKeys += key
+                    data.updatedAt[key] = maxOf(item.optLong("updatedAt"), deletedAt)
+                    return@forEachObject
+                }
                 data.logs[date] = DailyLog(
                     date = date,
                     flow = FlowLevel.fromName(item.optString("flow", "NONE")),
@@ -80,20 +92,34 @@ class BloomeeStore(private val file: File = defaultFile()) {
                     note = item.optString("note")
                 )
                 item.optLong("updatedAt").takeIf { it > 0 }
-                    ?.let { data.updatedAt[DesktopData.logKey(date)] = it }
+                    ?.let { data.updatedAt[key] = it }
             }
             root.optJSONArray("hydration")?.forEachObject { item ->
                 val date = runCatching { LocalDate.parse(item.getString("date")) }.getOrNull()
                     ?: return@forEachObject
+                val key = DesktopData.hydrationKey(date)
+                val deletedAt = item.optLong("deletedAt").takeIf { it > 0 }
+                if (deletedAt != null) {
+                    data.deletedKeys += key
+                    data.updatedAt[key] = maxOf(item.optLong("updatedAt"), deletedAt)
+                    return@forEachObject
+                }
                 data.hydrationMl[date] = item.optInt("consumedMl")
                 data.hydrationGoalMl[date] = item.optInt("goalMl", 2000)
                 item.optLong("updatedAt").takeIf { it > 0 }
-                    ?.let { data.updatedAt[DesktopData.hydrationKey(date)] = it }
+                    ?.let { data.updatedAt[key] = it }
             }
             root.optJSONArray("nutrition")?.forEachObject { item ->
                 val date = runCatching { LocalDate.parse(item.getString("date")) }.getOrNull()
                     ?: return@forEachObject
                 val id = item.optString("id").ifBlank { UUID.randomUUID().toString() }
+                val key = DesktopData.nutritionKey(id)
+                val deletedAt = item.optLong("deletedAt").takeIf { it > 0 }
+                if (deletedAt != null) {
+                    data.deletedKeys += key
+                    data.updatedAt[key] = maxOf(item.optLong("updatedAt"), deletedAt)
+                    return@forEachObject
+                }
                 data.nutrition += NutritionEntry(
                     id = id,
                     date = date,
@@ -102,7 +128,7 @@ class BloomeeStore(private val file: File = defaultFile()) {
                     kcal = item.optInt("kcal")
                 )
                 item.optLong("updatedAt").takeIf { it > 0 }
-                    ?.let { data.updatedAt[DesktopData.nutritionKey(id)] = it }
+                    ?.let { data.updatedAt[key] = it }
             }
         }
         return data
@@ -202,20 +228,73 @@ class BloomeeStore(private val file: File = defaultFile()) {
         }
     }
 
-    /** Merges a phone-exported `bloomee-yedek.json` into the current data. */
+    /**
+     * Merges a phone-exported `bloomee-yedek.json` per record: an incoming
+     * version is applied only when its `updatedAt` stamp is newer than the
+     * local one. Records without a stamp (legacy backups) only fill gaps and
+     * never overwrite — an old export can no longer clobber newer edits.
+     * Tombstones apply as deletes by the same rule.
+     */
     fun importBackup(source: File, data: DesktopData): String {
         val imported = BloomeeStore(source).load()
-        data.logs.putAll(imported.logs)
-        data.hydrationMl.putAll(imported.hydrationMl)
-        data.hydrationGoalMl.putAll(imported.hydrationGoalMl)
-        val existingIds = data.nutrition.mapTo(mutableSetOf()) { it.id }
-        data.nutrition += imported.nutrition.filter { it.id !in existingIds }
-        // Carry the records' own stamps so a merged record keeps its real
-        // last-write time instead of looking freshly edited on every save.
-        data.updatedAt.putAll(imported.updatedAt)
+        var applied = 0
+        var skipped = 0
+        var deleted = 0
+
+        fun wins(key: String): Boolean {
+            val incoming = imported.updatedAt[key] ?: 0L
+            return incoming > (data.updatedAt[key] ?: -1L)
+        }
+
+        fun adopt(key: String) {
+            imported.updatedAt[key]?.let { data.updatedAt[key] = it }
+        }
+
+        imported.logs.forEach { (date, log) ->
+            val key = DesktopData.logKey(date)
+            if (wins(key)) {
+                data.logs[date] = log
+                adopt(key)
+                applied++
+            } else skipped++
+        }
+        imported.hydrationMl.keys.forEach { date ->
+            val key = DesktopData.hydrationKey(date)
+            if (wins(key)) {
+                data.hydrationMl[date] = imported.hydrationMl.getValue(date)
+                imported.hydrationGoalMl[date]?.let { data.hydrationGoalMl[date] = it }
+                adopt(key)
+                applied++
+            } else skipped++
+        }
+        imported.nutrition.forEach { entry ->
+            val key = DesktopData.nutritionKey(entry.id)
+            if (wins(key)) {
+                data.nutrition.removeAll { it.id == entry.id }
+                data.nutrition += entry
+                adopt(key)
+                applied++
+            } else skipped++
+        }
+        imported.deletedKeys.forEach { key ->
+            if (!wins(key)) return@forEach
+            val target = key.substringAfter(':')
+            when (key.substringBefore(':')) {
+                "log" -> data.logs.remove(runCatching { LocalDate.parse(target) }.getOrNull())
+                "hyd" -> runCatching { LocalDate.parse(target) }.getOrNull()?.let { date ->
+                    data.hydrationMl.remove(date)
+                    data.hydrationGoalMl.remove(date)
+                }
+                "nut" -> data.nutrition.removeAll { it.id == target }
+            }
+            adopt(key)
+            deleted++
+        }
+
         save(data)
-        return "${imported.logs.size} günlük kayıt, ${imported.hydrationMl.size} su günü, " +
-            "${imported.nutrition.size} beslenme kaydı içe aktarıldı."
+        return "$applied kayıt eklendi/güncellendi" +
+            (if (skipped > 0) ", $skipped atlandı (yereli daha yeni)" else "") +
+            (if (deleted > 0) ", $deleted silme işlendi" else "") + "."
     }
 
     fun exportBackup(target: File, data: DesktopData) {
