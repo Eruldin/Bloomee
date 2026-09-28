@@ -119,7 +119,10 @@ private class DesktopAppState(private val store: BloomeeStore = BloomeeStore()) 
 
     fun removeNutrition(id: String) {
         data.nutrition.removeAll { it.id == id }
-        data.updatedAt.remove(DesktopData.nutritionKey(id))
+        // Keep a tombstone stamp so the delete survives restarts and beats a
+        // stale backup on the next import instead of resurrecting the row.
+        data.deletedKeys += DesktopData.nutritionKey(id)
+        data.updatedAt[DesktopData.nutritionKey(id)] = System.currentTimeMillis()
         touch()
     }
 

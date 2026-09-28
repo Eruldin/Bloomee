@@ -130,6 +130,17 @@ class BloomeeStore(private val file: File = defaultFile()) {
                 item.optLong("updatedAt").takeIf { it > 0 }
                     ?.let { data.updatedAt[key] = it }
             }
+            // Tombstone stamps persist across restarts — without them an older
+            // backup could resurrect a record that was deleted while the app
+            // was closed. The phone importer ignores this section.
+            root.optJSONArray("tombstones")?.forEachObject { item ->
+                val key = item.optString("key")
+                val stamp = item.optLong("ts")
+                if (key.isNotBlank() && stamp > 0) {
+                    data.deletedKeys += key
+                    data.updatedAt[key] = maxOf(data.updatedAt[key] ?: 0L, stamp)
+                }
+            }
         }
         return data
     }
@@ -195,6 +206,14 @@ class BloomeeStore(private val file: File = defaultFile()) {
         }
         root.put("nutrition", nutrition)
 
+        val tombstones = JSONArray()
+        data.deletedKeys.forEach { key ->
+            data.updatedAt[key]?.let { stamp ->
+                tombstones.put(JSONObject().apply { put("key", key); put("ts", stamp) })
+            }
+        }
+        if (tombstones.length() > 0) root.put("tombstones", tombstones)
+
         file.parentFile?.mkdirs()
         file.writeText(root.toString(2))
         restrictToOwner(file)
@@ -254,6 +273,7 @@ class BloomeeStore(private val file: File = defaultFile()) {
             val key = DesktopData.logKey(date)
             if (wins(key)) {
                 data.logs[date] = log
+                data.deletedKeys.remove(key)
                 adopt(key)
                 applied++
             } else skipped++
@@ -263,6 +283,7 @@ class BloomeeStore(private val file: File = defaultFile()) {
             if (wins(key)) {
                 data.hydrationMl[date] = imported.hydrationMl.getValue(date)
                 imported.hydrationGoalMl[date]?.let { data.hydrationGoalMl[date] = it }
+                data.deletedKeys.remove(key)
                 adopt(key)
                 applied++
             } else skipped++
@@ -272,6 +293,7 @@ class BloomeeStore(private val file: File = defaultFile()) {
             if (wins(key)) {
                 data.nutrition.removeAll { it.id == entry.id }
                 data.nutrition += entry
+                data.deletedKeys.remove(key)
                 adopt(key)
                 applied++
             } else skipped++
