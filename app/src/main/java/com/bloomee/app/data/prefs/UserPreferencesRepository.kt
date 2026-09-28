@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bloomee.app.domain.model.ActivityLevel
@@ -33,7 +34,6 @@ class UserPreferencesRepository(private val context: Context) {
         val activityLevel = stringPreferencesKey("activity_level")
         val cycleLength = intPreferencesKey("cycle_length")
         val periodLength = intPreferencesKey("period_length")
-        val hydrationGoal = intPreferencesKey("hydration_goal")
         val partnerMode = booleanPreferencesKey("partner_mode")
         val partnerName = stringPreferencesKey("partner_name")
         val reminderHydration = booleanPreferencesKey("reminder_hydration")
@@ -45,6 +45,7 @@ class UserPreferencesRepository(private val context: Context) {
         val themeName = stringPreferencesKey("theme_name")
         val themeMode = stringPreferencesKey("theme_mode")
         val onboardingCompleted = booleanPreferencesKey("onboarding_completed")
+        val syncWatermark = longPreferencesKey("sync_watermark_ms")
     }
 
     private val secrets: Flow<String> = context.secretsDataStore.data.map { prefs ->
@@ -62,7 +63,6 @@ class UserPreferencesRepository(private val context: Context) {
                 ?: ActivityLevel.MODERATE,
             defaultCycleLength = prefs[Keys.cycleLength] ?: 28,
             defaultPeriodLength = prefs[Keys.periodLength] ?: 5,
-            hydrationGoalMl = prefs[Keys.hydrationGoal] ?: 2000,
             partnerModeEnabled = prefs[Keys.partnerMode] ?: false,
             partnerName = prefs[Keys.partnerName].orEmpty(),
             reminderHydrationEnabled = prefs[Keys.reminderHydration] ?: true,
@@ -92,7 +92,6 @@ class UserPreferencesRepository(private val context: Context) {
                     ?: ActivityLevel.MODERATE,
                 defaultCycleLength = prefs[Keys.cycleLength] ?: 28,
                 defaultPeriodLength = prefs[Keys.periodLength] ?: 5,
-                hydrationGoalMl = prefs[Keys.hydrationGoal] ?: 2000,
                 partnerModeEnabled = prefs[Keys.partnerMode] ?: false,
                 partnerName = prefs[Keys.partnerName].orEmpty(),
                 reminderHydrationEnabled = prefs[Keys.reminderHydration] ?: true,
@@ -114,7 +113,6 @@ class UserPreferencesRepository(private val context: Context) {
             prefs[Keys.activityLevel] = updated.activityLevel.name
             prefs[Keys.cycleLength] = updated.defaultCycleLength
             prefs[Keys.periodLength] = updated.defaultPeriodLength
-            prefs[Keys.hydrationGoal] = updated.hydrationGoalMl
             prefs[Keys.partnerMode] = updated.partnerModeEnabled
             prefs[Keys.partnerName] = updated.partnerName
             prefs[Keys.reminderHydration] = updated.reminderHydrationEnabled
@@ -131,5 +129,13 @@ class UserPreferencesRepository(private val context: Context) {
         context.secretsDataStore.edit { prefs ->
             prefs[Keys.assistantApiKey] = updated.assistantApiKey
         }
+    }
+
+    /** Server-side sync cursor: the time up to which remote changes were applied. */
+    suspend fun syncWatermark(): Long =
+        context.dataStore.data.first()[Keys.syncWatermark] ?: 0L
+
+    suspend fun setSyncWatermark(ms: Long) {
+        context.dataStore.edit { prefs -> prefs[Keys.syncWatermark] = ms }
     }
 }

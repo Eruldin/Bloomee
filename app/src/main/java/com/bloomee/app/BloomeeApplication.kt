@@ -22,8 +22,8 @@ import kotlinx.coroutines.launch
 class AppContainer(context: Context) {
     private val database = BloomeeDatabase.get(context)
 
-    val cloudSync: CloudSync = FirebaseCloudSync(context)
     val userPreferencesRepository = UserPreferencesRepository(context)
+    val cloudSync: CloudSync = FirebaseCloudSync(context, userPreferencesRepository)
     val cycleRepository = CycleRepository(database.dailyLogDao(), cloudSync)
     val hydrationRepository = HydrationRepository(database.hydrationDao(), cloudSync)
     val nutritionRepository = NutritionRepository(database.nutritionDao(), cloudSync)
@@ -43,6 +43,10 @@ class BloomeeApplication : Application() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    private companion object {
+        const val TOMBSTONE_RETENTION_MS = 30L * 24 * 60 * 60 * 1000
+    }
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
@@ -52,6 +56,14 @@ class BloomeeApplication : Application() {
             val profile = container.userPreferencesRepository.profile.first()
             container.cloudSync.setEnabled(profile.cloudSyncEnabled)
             ReminderScheduler.schedule(this@BloomeeApplication, profile)
+
+            // Drop deletion markers that have outlived every device that could
+            // still resurrect the record — independent of sync being enabled.
+            val cutoff = System.currentTimeMillis() - TOMBSTONE_RETENTION_MS
+            container.cycleRepository.pruneTombstones(cutoff)
+            container.hydrationRepository.pruneTombstones(cutoff)
+            container.nutritionRepository.pruneTombstones(cutoff)
+
             if (profile.cloudSyncEnabled) {
                 container.cloudSync.syncNow(
                     container.cycleRepository,

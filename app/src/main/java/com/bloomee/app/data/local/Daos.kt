@@ -15,9 +15,6 @@ interface DailyLogDao {
     @Query("SELECT * FROM daily_logs WHERE date = :date AND deletedAt IS NULL LIMIT 1")
     suspend fun findByDate(date: String): DailyLogEntity?
 
-    @Query("SELECT * FROM daily_logs WHERE date = :date LIMIT 1")
-    suspend fun findByDateIncludingDeleted(date: String): DailyLogEntity?
-
     @Query("SELECT * FROM daily_logs WHERE deletedAt IS NULL ORDER BY date ASC")
     suspend fun getAll(): List<DailyLogEntity>
 
@@ -30,24 +27,27 @@ interface DailyLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(entities: List<DailyLogEntity>)
 
+    // Tombstones carry no payload: a deleted record keeps only its deletion
+    // marker, so the sensitive fields don't linger in the database or backups.
     suspend fun softDelete(date: String, deletedAt: Long) {
-        val existing = findByDateIncludingDeleted(date)
         upsert(
-            existing?.copy(deletedAt = deletedAt, updatedAt = deletedAt)
-                ?: DailyLogEntity(
-                    date = date,
-                    flow = "NONE",
-                    mood = null,
-                    symptoms = "",
-                    painLevel = 0,
-                    sleepHours = null,
-                    weightKg = null,
-                    note = "",
-                    updatedAt = deletedAt,
-                    deletedAt = deletedAt
-                )
+            DailyLogEntity(
+                date = date,
+                flow = "NONE",
+                mood = null,
+                symptoms = "",
+                painLevel = 0,
+                sleepHours = null,
+                weightKg = null,
+                note = "",
+                updatedAt = deletedAt,
+                deletedAt = deletedAt
+            )
         )
     }
+
+    @Query("DELETE FROM daily_logs WHERE deletedAt IS NOT NULL AND deletedAt < :cutoffMs")
+    suspend fun pruneTombstones(cutoffMs: Long)
 
     @Query("DELETE FROM daily_logs")
     suspend fun clear()
@@ -73,6 +73,21 @@ interface HydrationDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(entities: List<HydrationDayEntity>)
+
+    suspend fun softDelete(date: String, deletedAt: Long) {
+        upsert(
+            HydrationDayEntity(
+                date = date,
+                consumedMl = 0,
+                goalMl = 0,
+                updatedAt = deletedAt,
+                deletedAt = deletedAt
+            )
+        )
+    }
+
+    @Query("DELETE FROM hydration_days WHERE deletedAt IS NOT NULL AND deletedAt < :cutoffMs")
+    suspend fun pruneTombstones(cutoffMs: Long)
 
     @Query("DELETE FROM hydration_days")
     suspend fun clear()
@@ -101,8 +116,18 @@ interface NutritionDao {
 
     suspend fun softDelete(id: String, deletedAt: Long) {
         val existing = findByIdIncludingDeleted(id) ?: return
-        upsert(existing.copy(deletedAt = deletedAt, updatedAt = deletedAt))
+        upsert(
+            existing.copy(
+                deletedAt = deletedAt,
+                updatedAt = deletedAt,
+                name = "",
+                kcal = 0
+            )
+        )
     }
+
+    @Query("DELETE FROM nutrition_entries WHERE deletedAt IS NOT NULL AND deletedAt < :cutoffMs")
+    suspend fun pruneTombstones(cutoffMs: Long)
 
     @Query("DELETE FROM nutrition_entries")
     suspend fun clear()
