@@ -16,12 +16,20 @@ description: How to launch and end-to-end test the Bloomee Compose Desktop app (
 - No python/jq on the box — use `read`/`grep`/`cat` on the JSON directly; it's small.
 
 ## UI map (Turkish labels)
-- Nav rail: "Bugün" (today dashboard) / "Profil ve veri".
+- Nav rail: "Bugün" (today dashboard) / "Profil ve veri". NOTE: rail item centers sit ~x=55-60, not at the rail's left edge — clicks near x<45 can miss; zoom the region if a nav click doesn't land.
 - Bugün: ThemePicker row (palette chips Gül/Lavanta/Okyanus/Orman/Gün batımı + dark-mode icon), Döngü card (flow chips Yok/Lekelenme/Hafif/Orta/Yoğun), Su card (+100/+200/+330/+500 ml, Sıfırla), Kalori card (entry rows with trash icon, "Ne yedin?" + "kcal" fields, meal chips Kahvaltı/Öğle/Akşam/Atıştırma, "Ekle").
 - Profil ve veri: fields Adın/Doğum yılı/Kilo (kg)/Boy (cm), activity chips, "Kaydet" button, backup import/export buttons, status message line.
+- Click precision: TextButtons (e.g. "Sıfırla") get expanded ~48dp touch targets that can overlap the neighboring OutlinedButton's edge — aim for the center of small buttons, and verify the result in the store file if a click seems to hit the wrong control.
+
+## Backup import merge semantics (P11+)
+- `importBackup` is per-record last-write-wins: incoming `updatedAt` > local stamp (−1 if absent) applies; otherwise "atlandı". Status format: `N kayıt eklendi/güncellendi[, M atlandı (yereli daha yeni)][, D silme işlendi].`
+- `deletedAt > 0` entries load as tombstones (key in `deletedKeys`, stamp = max(updatedAt, deletedAt)); a winning tombstone deletes the local record, a losing one is silently ignored.
+- Records without `updatedAt` (legacy exports) merge as stamp 0 → they only fill keys that don't exist locally, never overwrite stamped records.
+- Test recipe: craft fixtures with round, clearly ordered stamps (e.g. 1111111111111 stale / 9999999999999 fresh), reuse real record keys (dates for logs/hydration, ids for nutrition — read the id from the store file first), then assert both the status text AND the file diff.
 
 ## Known quirks (verify before relying on visuals)
-- Theme/dark-mode changes write to the store file but do NOT re-render live — `DesktopAppState.data.profile` is a plain Kotlin var, not Compose state, so `BloomeeDesktopTheme` params freeze at first composition. Persisted theme applies on the next launch; verify via the JSON file, not pixels.
+- Theme/dark-mode: since P11 the window repaints instantly (BloomeeDesktopApp reads `state.version`). If palette/dark clicks don't visibly repaint, that's a regression — the profile values still persist to the store file either way.
+- Tombstone durability: since P12, tombstone stamps persist in the store file under a `"tombstones"` section (`{key, ts}` pairs), so deletes survive restarts. In P11 they were in-memory only and a stale backup could resurrect a deleted record after restart.
 - Backup import/export use `java.awt.FileDialog` (native Windows dialog, modal). For SAVE the File name field is preset to "bloomee-yedek.json" — clear it (ctrl+a, Delete) before typing a full path, or the preset text gets appended and Windows rejects it ("file name is not valid"). Typing a full absolute path in the File name field works. The LOAD dialog usually opens in the last-used directory.
 - Apparent "didn't apply" states may just be deferred recomposition — check the store file for ground truth.
 
