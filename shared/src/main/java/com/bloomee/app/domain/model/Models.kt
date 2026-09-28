@@ -160,7 +160,6 @@ data class UserProfile(
     val activityLevel: ActivityLevel = ActivityLevel.MODERATE,
     val defaultCycleLength: Int = 28,
     val defaultPeriodLength: Int = 5,
-    val hydrationGoalMl: Int = 2000,
     val partnerModeEnabled: Boolean = false,
     val partnerName: String = "",
     val reminderHydrationEnabled: Boolean = true,

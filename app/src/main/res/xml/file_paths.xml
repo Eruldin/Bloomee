@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <cache-path name="exports" path="." />
-    <files-path name="backups" path="." />
+    <!-- Only the export directory is shareable — nothing else inside the app's
+         private cache/files should be reachable through a content URI. -->
+    <cache-path name="exports" path="exports/" />
 </paths>

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.bloomee.app.BloomeeApplication
+import com.bloomee.app.data.backup.BackupRepository
 import com.bloomee.app.data.sync.SyncState
 import com.bloomee.app.domain.advice.AdviceCard
 import com.bloomee.app.domain.advice.AdviceEngine
@@ -23,12 +24,14 @@ import com.bloomee.app.domain.model.UserProfile
 import com.bloomee.app.domain.nutrition.CalorieCalculator
 import com.bloomee.app.domain.prediction.CyclePredictor
 import com.bloomee.app.notification.ReminderScheduler
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDate
@@ -76,6 +79,24 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
 
     private val _messages = MutableStateFlow<List<AssistantMessage>>(emptyList())
     val messages: StateFlow<List<AssistantMessage>> = _messages
+
+    private val _importPreview = MutableStateFlow<BackupRepository.ImportPreview?>(null)
+    val importPreview: StateFlow<BackupRepository.ImportPreview?> = _importPreview
+
+    init {
+        // Pull remote changes while the app is open — pushes already happen on
+        // each write, but another device's edits only arrive on syncNow.
+        viewModelScope.launch {
+            while (isActive) {
+                delay(SYNC_INTERVAL_MS)
+                container.cloudSync.syncNow(
+                    container.cycleRepository,
+                    container.hydrationRepository,
+                    container.nutritionRepository
+                )
+            }
+        }
+    }
 
     private val _assistantBusy = MutableStateFlow(false)
     val assistantBusy: StateFlow<Boolean> = _assistantBusy
@@ -216,12 +237,37 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { onReady(container.backupRepository.exportToCacheFile()) }
     }
 
-    fun importBackup(uri: Uri, replace: Boolean) {
+    fun prepareImport(uri: Uri) {
         viewModelScope.launch {
-            val result = container.backupRepository.importFrom(uri, replace)
-            _toast.value = result.error
-                ?: "${result.logCount} günlük, ${result.hydrationCount} su, ${result.nutritionCount} beslenme kaydı geri yüklendi."
+            val preview = container.backupRepository.previewImport(uri)
+            if (preview.error != null) {
+                _toast.value = preview.error
+            } else {
+                _importPreview.value = preview
+            }
         }
+    }
+
+    fun confirmImport(mode: BackupRepository.ImportMode) {
+        val preview = _importPreview.value ?: return
+        val backup = preview.backup ?: return
+        _importPreview.value = null
+        viewModelScope.launch {
+            val result = container.backupRepository.importBackup(backup, mode)
+            _toast.value = result.error ?: buildString {
+                append("${result.appliedCount} kayıt geri yüklendi.")
+                if (result.skippedNewerLocalCount > 0) {
+                    append(" ${result.skippedNewerLocalCount} kayıt atlandı (cihazdaki daha yeni).")
+                }
+                if (result.invalidCount > 0) {
+                    append(" ${result.invalidCount} bozuk satır atlandı.")
+                }
+            }
+        }
+    }
+
+    fun dismissImport() {
+        _importPreview.value = null
     }
 
     fun askAssistant(question: String) {
@@ -263,6 +309,8 @@ class BloomeeViewModel(application: Application) : AndroidViewModel(application)
     }
 
     companion object {
+        private const val SYNC_INTERVAL_MS = 15L * 60 * 1000
+
         val Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(

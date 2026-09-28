@@ -36,4 +36,6 @@ class NutritionRepository(
         if (replace) dao.clear()
         dao.upsertAll(entities)
     }
+
+    suspend fun pruneTombstones(cutoffMs: Long) = dao.pruneTombstones(cutoffMs)
 }

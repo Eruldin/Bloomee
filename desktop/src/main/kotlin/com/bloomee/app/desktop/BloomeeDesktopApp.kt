@@ -137,6 +137,7 @@ private class DesktopAppState(private val store: BloomeeStore = BloomeeStore()) 
 @Composable
 fun BloomeeDesktopApp() {
     val state = remember { DesktopAppState() }
+    state.version // reading it here makes theme/profile edits recompose the window
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val darkTheme = state.data.profile.darkMode ?: systemDark
 

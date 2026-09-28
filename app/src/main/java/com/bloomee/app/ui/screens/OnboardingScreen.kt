@@ -1,5 +1,6 @@
 package com.bloomee.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
@@ -71,7 +73,14 @@ fun OnboardingScreen(
     var cycleLength by remember { mutableStateOf(28) }
     var periodLength by remember { mutableStateOf(5) }
     var daysAgo by remember { mutableStateOf("") }
-    val requestNotificationPermission = rememberNotificationPermissionRequest()
+    val context = LocalContext.current
+    val requestNotificationPermission = rememberNotificationPermissionRequest {
+        Toast.makeText(
+            context,
+            "Bildirim izni verilmedi — hatırlatıcılar çalışmaz. Dilersen Ayarlar'dan sonra açabilirsin.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
 
     Column(
         modifier = modifier

@@ -37,15 +37,6 @@ class CycleRepository(
         cloudSync.deleteDailyLog(date.toString(), deletedAt)
     }
 
-    suspend fun markPeriodRange(start: LocalDate, endInclusive: LocalDate, flowLevelName: String) {
-        var cursor = start
-        while (!cursor.isAfter(endInclusive)) {
-            val existing = logFor(cursor) ?: DailyLog(date = cursor)
-            save(existing.copy(flow = com.bloomee.app.domain.model.FlowLevel.fromName(flowLevelName)))
-            cursor = cursor.plusDays(1)
-        }
-    }
-
     suspend fun exportAll(): List<DailyLogEntity> = dao.getAll()
 
     suspend fun exportAllIncludingDeleted(): List<DailyLogEntity> = dao.getAllIncludingDeleted()
@@ -54,4 +45,6 @@ class CycleRepository(
         if (replace) dao.clear()
         dao.upsertAll(entities)
     }
+
+    suspend fun pruneTombstones(cutoffMs: Long) = dao.pruneTombstones(cutoffMs)
 }
